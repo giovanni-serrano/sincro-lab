@@ -1,11 +1,11 @@
 [project]
 name = "sincrolab"
 version = "0.1.0"
-description = "Núcleo educativo para experimentos reproducibles de PowerDyn Lab."
+description = "Núcleo educativo para experimentos reproducibles de SincroLab."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "PowerDyn Lab contributors" }]
+authors = [{ name = "SincroLab contributors" }]
 dependencies = ['numpy>=1.26,<3']
 
 [dependency-groups]
