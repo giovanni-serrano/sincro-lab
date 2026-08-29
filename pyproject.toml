@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "PowerDyn Lab contributors" }]
-dependencies = []
+dependencies = ['numpy>=1.26,<3']
 
 [dependency-groups]
 dev = ["pytest>=8.0,<9.0"]
