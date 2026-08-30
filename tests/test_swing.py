@@ -68,6 +68,18 @@ def test_smib_swing_rhs_has_positive_acceleration_when_pm_exceeds_pe() -> None:
     assert derivatives[1] == pytest.approx(parameters.Pm_pu / (2.0 * parameters.H_s))
 
 
+def test_smib_swing_rhs_supports_zero_transfer_capability() -> None:
+    parameters = _parameters(Pm_pu=0.8, Pmax_pu=0.0, D_pu=0.0)
+
+    derivatives = smib_swing_rhs(
+        time_s=0.0,
+        state=np.array([pi / 2.0, 0.0]),
+        parameters=parameters,
+    )
+
+    assert derivatives[1] == pytest.approx(parameters.Pm_pu / (2.0 * parameters.H_s))
+
+
 def test_smib_swing_rhs_has_negative_acceleration_when_pm_is_below_pe() -> None:
     parameters = _parameters(Pm_pu=0.8, Pmax_pu=2.0, D_pu=0.0)
 

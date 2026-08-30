@@ -13,7 +13,7 @@ class SMIBParameters:
         D_pu: Damping-power coefficient in pu power per pu speed deviation.
         f_base_hz: Electrical base frequency in hertz.
         Pm_pu: Constant mechanical input power in per unit.
-        Pmax_pu: Power-angle capability in per unit for
+        Pmax_pu: Nonnegative power-angle capability in per unit for
             ``Pe_pu = Pmax_pu * sin(delta_rad)``.
     """
 
@@ -28,7 +28,7 @@ class SMIBParameters:
         _require_finite("D_pu", self.D_pu)
         _require_positive_finite("f_base_hz", self.f_base_hz)
         _require_finite("Pm_pu", self.Pm_pu)
-        _require_positive_finite("Pmax_pu", self.Pmax_pu)
+        _require_nonnegative_finite("Pmax_pu", self.Pmax_pu)
 
 
 @dataclass(frozen=True)
@@ -58,3 +58,10 @@ def _require_finite(name: str, value: float) -> None:
 def _require_positive_finite(name: str, value: float) -> None:
     if not isfinite(value) or value <= 0.0:
         raise ValueError(f"{name} must be finite and greater than zero")
+
+
+def _require_nonnegative_finite(name: str, value: float) -> None:
+    if not isfinite(value) or value < 0.0:
+        raise ValueError(
+            f"{name} must be finite and greater than or equal to zero"
+        )

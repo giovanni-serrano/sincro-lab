@@ -66,7 +66,6 @@ def test_smib_domain_values_reuse_existing_power_angle_relations() -> None:
         ("f_base_hz", -50.0),
         ("f_base_hz", float("nan")),
         ("f_base_hz", float("inf")),
-        ("Pmax_pu", 0.0),
         ("Pmax_pu", -1.0),
         ("Pmax_pu", float("nan")),
         ("Pmax_pu", float("inf")),
@@ -102,6 +101,12 @@ def test_smib_initial_state_rejects_nonfinite_values(
 
     with pytest.raises(ValueError, match=field_name):
         SMIBInitialState(**values)
+
+
+def test_smib_parameters_accept_zero_transfer_capability() -> None:
+    parameters = _valid_parameters(Pmax_pu=0.0)
+
+    assert parameters.Pmax_pu == 0.0
 
 
 def test_smib_domain_values_do_not_impose_equilibrium_or_sign_assumptions() -> None:

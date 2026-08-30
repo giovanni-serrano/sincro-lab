@@ -8,8 +8,10 @@ from math import asin, isfinite, sin
 
 def electrical_power_pu(delta_rad: float, Pmax_pu: float) -> float:
     """Return ``Pe_pu`` for an angle in radians and powers in per unit."""
-    if not isfinite(Pmax_pu) or Pmax_pu <= 0.0:
-        raise ValueError("Pmax_pu must be finite and greater than zero")
+    if not isfinite(Pmax_pu) or Pmax_pu < 0.0:
+        raise ValueError(
+            "Pmax_pu must be finite and greater than or equal to zero"
+        )
 
     return Pmax_pu * sin(delta_rad)
 

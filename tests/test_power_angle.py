@@ -13,6 +13,7 @@ from sincrolab.models import electrical_power_pu, initial_equilibrium_angle_rad
         (pi / 2.0, 1.5, 1.5),
         (-pi / 2.0, 1.5, -1.5),
         (pi, 3.0, 0.0),
+        (pi / 4.0, 0.0, 0.0),
     ],
 )
 def test_electrical_power_pu_known_values(
@@ -25,8 +26,8 @@ def test_electrical_power_pu_known_values(
     assert Pe_pu == pytest.approx(expected_Pe_pu, abs=1e-12)
 
 
-@pytest.mark.parametrize("invalid_Pmax_pu", [0.0, -1.0, float("nan"), float("inf")])
-def test_electrical_power_pu_rejects_nonpositive_or_nonfinite_pmax(
+@pytest.mark.parametrize("invalid_Pmax_pu", [-1.0, float("nan"), float("inf")])
+def test_electrical_power_pu_rejects_negative_or_nonfinite_pmax(
     invalid_Pmax_pu: float,
 ) -> None:
     with pytest.raises(ValueError, match="Pmax_pu"):
