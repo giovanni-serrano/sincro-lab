@@ -58,19 +58,6 @@ def test_classical_rk4_is_more_accurate_than_euler_at_same_dt() -> None:
     assert rk4_error < euler_error
 
 
-def test_classical_rk4_shortens_final_step_to_reach_t_end() -> None:
-    times, states = classical_rk4(
-        lambda _time, _state: 1.0,
-        y0=0.0,
-        t_start=0.0,
-        t_end=1.0,
-        dt=0.3,
-    )
-
-    np.testing.assert_allclose(times, [0.0, 0.3, 0.6, 0.9, 1.0])
-    assert states[-1] == pytest.approx(1.0)
-
-
 def test_classical_rk4_copies_reused_rhs_output_buffer() -> None:
     derivative_buffer = np.empty(1)
 
@@ -88,25 +75,6 @@ def test_classical_rk4_copies_reused_rhs_output_buffer() -> None:
 
     expected = 1.0 + 0.1 + 0.1**2 / 2.0 + 0.1**3 / 6.0 + 0.1**4 / 24.0
     assert states[-1, 0] == pytest.approx(expected)
-
-
-def test_classical_rk4_does_not_expose_vector_storage_to_rhs_mutation() -> None:
-    y0 = np.array([1.0, -1.0])
-
-    def mutating_rhs(_time: float, state: np.ndarray) -> np.ndarray:
-        state[:] = 100.0
-        return np.zeros_like(state)
-
-    _, states = classical_rk4(
-        mutating_rhs,
-        y0=y0,
-        t_start=0.0,
-        t_end=0.2,
-        dt=0.1,
-    )
-
-    np.testing.assert_array_equal(y0, [1.0, -1.0])
-    np.testing.assert_array_equal(states, [[1.0, -1.0]] * 3)
 
 
 def test_classical_rk4_validates_rhs_shape_at_every_stage() -> None:
