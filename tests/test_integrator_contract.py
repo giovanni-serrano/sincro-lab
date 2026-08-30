@@ -30,6 +30,25 @@ def test_integrator_shortens_final_step_to_reach_t_end(
 
 
 @pytest.mark.parametrize("integrator", INTEGRATORS)
+def test_integrator_avoids_spurious_terminal_microstep(
+    integrator: Integrator,
+) -> None:
+    times, states = integrator(
+        lambda _time, _state: 1.0,
+        y0=0.0,
+        t_start=0.0,
+        t_end=0.13,
+        dt=0.01,
+    )
+
+    assert times.size == 14
+    assert times[-1] == 0.13
+    assert np.count_nonzero(times == 0.13) == 1
+    assert np.all(np.diff(times) > 0.0)
+    assert states[-1] == pytest.approx(0.13)
+
+
+@pytest.mark.parametrize("integrator", INTEGRATORS)
 def test_integrator_does_not_expose_vector_storage_to_rhs_mutation(
     integrator: Integrator,
 ) -> None:

@@ -1,6 +1,6 @@
 """Shared time-grid construction for fixed-step integrators."""
 
-from math import isclose, isfinite
+from math import isclose, isfinite, ulp
 
 import numpy as np
 from numpy.typing import NDArray
@@ -20,24 +20,24 @@ def build_time_grid(
         raise ValueError("t_end must be greater than or equal to t_start")
 
     times = [float(t_start)]
-    # Floating accumulation can leave the remainder a few ULP above dt;
-    # treating it as one full step avoids a spurious near-zero final step.
-    relative_tolerance = 8.0 * np.finfo(np.float64).eps
+    step_index = 1
 
     while times[-1] < t_end:
-        current_time = times[-1]
-        remaining = t_end - current_time
-        reaches_end = remaining < dt or isclose(
-            remaining,
-            dt,
-            rel_tol=relative_tolerance,
-            abs_tol=0.0,
-        )
-        next_time = t_end if reaches_end else current_time + dt
-
-        if next_time <= current_time:
+        # Indexing from t_start prevents the rounding drift caused by adding
+        # dt repeatedly. Two endpoint ULPs cover the rounding of one
+        # multiplication and one addition without growing with the horizon.
+        candidate_time = float(t_start + step_index * dt)
+        if candidate_time <= times[-1]:
             raise ValueError("dt is too small to advance time at this scale")
 
-        times.append(float(next_time))
+        endpoint_tolerance = 2.0 * max(ulp(candidate_time), ulp(t_end))
+        reaches_end = candidate_time >= t_end or isclose(
+            candidate_time,
+            t_end,
+            rel_tol=0.0,
+            abs_tol=endpoint_tolerance,
+        )
+        times.append(float(t_end if reaches_end else candidate_time))
+        step_index += 1
 
     return np.asarray(times, dtype=np.float64)
