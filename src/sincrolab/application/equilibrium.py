@@ -1,7 +1,8 @@
-"""Application use case for an unperturbed SMIB equilibrium simulation."""
+"""Application use cases for continuous, constant-parameter SMIB motion."""
 
 from dataclasses import dataclass
 from functools import partial
+from math import isfinite
 
 import numpy as np
 from numpy.typing import NDArray
@@ -50,6 +51,58 @@ def simulate_smib_equilibrium(
         delta_rad=delta0_rad,
         omega_dev_pu=0.0,
     )
+
+    return _simulate_smib_from_initial_state(
+        parameters,
+        initial_state,
+        t_start_s=t_start_s,
+        t_end_s=t_end_s,
+        dt_s=dt_s,
+    )
+
+
+def simulate_smib_free_disturbance(
+    parameters: SMIBParameters,
+    *,
+    delta_offset_rad: float,
+    t_start_s: float,
+    t_end_s: float,
+    dt_s: float,
+) -> SMIBSimulationResult:
+    """Integrate free motion after an initial rotor-angle displacement.
+
+    The offset is added to the principal equilibrium angle in radians. Speed
+    deviation starts at zero, and all physical parameters remain constant.
+    """
+    delta0_rad = initial_equilibrium_angle_rad(
+        Pm_pu=parameters.Pm_pu,
+        Pmax_prefault_pu=parameters.Pmax_pu,
+    )
+    if not isfinite(delta_offset_rad):
+        raise ValueError("delta_offset_rad must be finite")
+
+    initial_state = SMIBInitialState(
+        delta_rad=delta0_rad + delta_offset_rad,
+        omega_dev_pu=0.0,
+    )
+
+    return _simulate_smib_from_initial_state(
+        parameters,
+        initial_state,
+        t_start_s=t_start_s,
+        t_end_s=t_end_s,
+        dt_s=dt_s,
+    )
+
+
+def _simulate_smib_from_initial_state(
+    parameters: SMIBParameters,
+    initial_state: SMIBInitialState,
+    *,
+    t_start_s: float,
+    t_end_s: float,
+    dt_s: float,
+) -> SMIBSimulationResult:
     state_vector = np.array(
         [initial_state.delta_rad, initial_state.omega_dev_pu],
         dtype=np.float64,
