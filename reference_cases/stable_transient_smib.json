@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "case_id": "stable_transient_smib",
+  "metadata": {
+    "provenance": "synthetic",
+    "purpose": "Stable first-swing regression and educational reference for SincroLab.",
+    "represents_specific_real_system": false
+  },
+  "smib_parameters": {
+    "H_s": 3.5,
+    "D_pu": 0.2,
+    "f_base_hz": 60.0,
+    "Pm_pu": 0.7,
+    "Pmax_pu": 1.2
+  },
+  "transient_network": {
+    "Pmax_prefault_pu": 1.2,
+    "Pmax_fault_pu": 0.2,
+    "Pmax_postfault_pu": 1.1,
+    "t_fault_s": 0.1,
+    "t_clear_s": 0.2
+  },
+  "initial_state": {
+    "delta_rad_source": "prefault_equilibrium",
+    "omega_dev_pu": 0.0
+  },
+  "simulation": {
+    "t_start_s": 0.0,
+    "t_end_s": 5.0,
+    "dt_s": 0.005
+  }
+}
