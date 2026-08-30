@@ -6,10 +6,16 @@ from sincrolab.models.power_angle import (
 )
 from sincrolab.models.smib import SMIBInitialState, SMIBParameters
 from sincrolab.models.swing import smib_swing_rhs
+from sincrolab.models.transient_network import (
+    SMIBNetworkState,
+    SMIBTransientNetwork,
+)
 
 __all__ = [
     "SMIBInitialState",
+    "SMIBNetworkState",
     "SMIBParameters",
+    "SMIBTransientNetwork",
     "electrical_power_pu",
     "initial_equilibrium_angle_rad",
     "smib_swing_rhs",
