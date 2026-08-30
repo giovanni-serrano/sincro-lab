@@ -1,12 +1,11 @@
 """Application use cases for continuous, constant-parameter SMIB motion."""
 
-from dataclasses import dataclass
 from functools import partial
 from math import isfinite
 
 import numpy as np
-from numpy.typing import NDArray
 
+from sincrolab.application.results import SMIBSimulationResult
 from sincrolab.models import (
     SMIBInitialState,
     SMIBParameters,
@@ -14,21 +13,6 @@ from sincrolab.models import (
     smib_swing_rhs,
 )
 from sincrolab.numerical import classical_rk4
-
-
-@dataclass(frozen=True)
-class SMIBSimulationResult:
-    """Structured trajectory of the classical SMIB state.
-
-    Attributes:
-        time_s: Time samples in seconds.
-        delta_rad: Electrical rotor angle in radians at each sample.
-        omega_dev_pu: Per-unit speed deviation at each sample.
-    """
-
-    time_s: NDArray[np.float64]
-    delta_rad: NDArray[np.float64]
-    omega_dev_pu: NDArray[np.float64]
 
 
 def simulate_smib_equilibrium(
@@ -118,7 +102,7 @@ def _simulate_smib_from_initial_state(
     )
 
     return SMIBSimulationResult(
-        time_s=np.array(time_s, dtype=np.float64, copy=True),
-        delta_rad=np.array(states[:, 0], dtype=np.float64, copy=True),
-        omega_dev_pu=np.array(states[:, 1], dtype=np.float64, copy=True),
+        time_s=time_s,
+        delta_rad=states[:, 0],
+        omega_dev_pu=states[:, 1],
     )
