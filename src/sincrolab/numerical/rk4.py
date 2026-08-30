@@ -1,4 +1,4 @@
-"""Generic explicit Euler integration for real ordinary differential equations."""
+"""Generic classical RK4 integration for real ordinary differential equations."""
 
 from collections.abc import Callable
 from typing import TypeAlias
@@ -12,14 +12,14 @@ State: TypeAlias = float | NDArray[np.float64]
 RhsFunction: TypeAlias = Callable[[float, State], State]
 
 
-def explicit_euler(
+def classical_rk4(
     rhs: RhsFunction,
     y0: State,
     t_start: float,
     t_end: float,
     dt: float,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
-    """Integrate ``y' = rhs(t, y)`` with the explicit Euler method.
+    """Integrate ``y' = rhs(t, y)`` with the classical fourth-order RK method.
 
     Times are one-dimensional. Scalar states have shape ``(n_times,)`` and
     vector states ``(n_times, n_states)``. A shorter final step reaches
@@ -37,18 +37,30 @@ def explicit_euler(
     states[0] = initial_state
     scalar_state = initial_state.ndim == 0
 
-    for index, time in enumerate(times[:-1]):
+    def evaluate_rhs(time: float, state: NDArray[np.float64]) -> NDArray[np.float64]:
         state_for_rhs: State
         if scalar_state:
-            state_for_rhs = float(states[index])
+            state_for_rhs = float(state)
         else:
-            state_for_rhs = states[index].copy()
+            state_for_rhs = state.copy()
 
-        derivative = np.asarray(rhs(float(time), state_for_rhs), dtype=np.float64)
+        derivative = np.array(rhs(time, state_for_rhs), dtype=np.float64, copy=True)
         if derivative.shape != initial_state.shape:
             raise ValueError("rhs output shape must match y0")
+        return derivative
 
+    for index, time in enumerate(times[:-1]):
         step = times[index + 1] - time
-        states[index + 1] = states[index] + step * derivative
+        half_step = 0.5 * step
+        current_state = np.asarray(states[index], dtype=np.float64)
+
+        k1 = evaluate_rhs(float(time), current_state)
+        k2 = evaluate_rhs(float(time + half_step), current_state + half_step * k1)
+        k3 = evaluate_rhs(float(time + half_step), current_state + half_step * k2)
+        k4 = evaluate_rhs(float(times[index + 1]), current_state + step * k3)
+
+        states[index + 1] = current_state + (step / 6.0) * (
+            k1 + 2.0 * k2 + 2.0 * k3 + k4
+        )
 
     return times, states
