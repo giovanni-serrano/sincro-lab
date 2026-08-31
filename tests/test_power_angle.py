@@ -2,7 +2,11 @@ from math import pi
 
 import pytest
 
-from sincrolab.models import electrical_power_pu, initial_equilibrium_angle_rad
+from sincrolab.models import (
+    electrical_power_pu,
+    equilibrium_angle_rad,
+    initial_equilibrium_angle_rad,
+)
 
 
 @pytest.mark.parametrize(
@@ -32,6 +36,22 @@ def test_electrical_power_pu_rejects_negative_or_nonfinite_pmax(
 ) -> None:
     with pytest.raises(ValueError, match="Pmax_pu"):
         electrical_power_pu(delta_rad=pi / 4.0, Pmax_pu=invalid_Pmax_pu)
+
+
+def test_equilibrium_angle_rad_known_value() -> None:
+    delta_rad = equilibrium_angle_rad(Pm_pu=1.0, Pmax_pu=2.0)
+
+    assert delta_rad == pytest.approx(pi / 6.0)
+
+
+def test_equilibrium_angle_rad_rejects_invalid_pmax() -> None:
+    with pytest.raises(ValueError, match="Pmax_pu"):
+        equilibrium_angle_rad(Pm_pu=0.5, Pmax_pu=0.0)
+
+
+def test_equilibrium_angle_rad_rejects_values_outside_asin_domain() -> None:
+    with pytest.raises(ValueError, match=r"within \[-1, 1\]"):
+        equilibrium_angle_rad(Pm_pu=1.01, Pmax_pu=1.0)
 
 
 @pytest.mark.parametrize(

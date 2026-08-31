@@ -16,16 +16,40 @@ def electrical_power_pu(delta_rad: float, Pmax_pu: float) -> float:
     return Pmax_pu * sin(delta_rad)
 
 
+def equilibrium_angle_rad(Pm_pu: float, Pmax_pu: float) -> float:
+    """Return the principal equilibrium angle for powers in per unit."""
+    return _principal_equilibrium_angle_rad(
+        Pm_pu,
+        Pmax_pu,
+        Pmax_name="Pmax_pu",
+    )
+
+
 def initial_equilibrium_angle_rad(
     Pm_pu: float,
     Pmax_prefault_pu: float,
 ) -> float:
     """Return the principal ``delta0_rad`` for prefault powers in per unit."""
-    if not isfinite(Pmax_prefault_pu) or Pmax_prefault_pu <= 0.0:
-        raise ValueError("Pmax_prefault_pu must be finite and greater than zero")
+    return _principal_equilibrium_angle_rad(
+        Pm_pu,
+        Pmax_prefault_pu,
+        Pmax_name="Pmax_prefault_pu",
+    )
 
-    power_ratio = Pm_pu / Pmax_prefault_pu
+
+def _principal_equilibrium_angle_rad(
+    Pm_pu: float,
+    Pmax_pu: float,
+    *,
+    Pmax_name: str,
+) -> float:
+    if not isfinite(Pmax_pu) or Pmax_pu <= 0.0:
+        raise ValueError(
+            f"{Pmax_name} must be finite and greater than zero"
+        )
+
+    power_ratio = Pm_pu / Pmax_pu
     if not isfinite(power_ratio) or not -1.0 <= power_ratio <= 1.0:
-        raise ValueError("Pm_pu / Pmax_prefault_pu must be within [-1, 1]")
+        raise ValueError(f"Pm_pu / {Pmax_name} must be within [-1, 1]")
 
     return asin(power_ratio)

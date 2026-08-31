@@ -2,6 +2,7 @@
 
 from sincrolab.models.power_angle import (
     electrical_power_pu,
+    equilibrium_angle_rad,
     initial_equilibrium_angle_rad,
 )
 from sincrolab.models.smib import SMIBInitialState, SMIBParameters
@@ -17,6 +18,7 @@ __all__ = [
     "SMIBParameters",
     "SMIBTransientNetwork",
     "electrical_power_pu",
+    "equilibrium_angle_rad",
     "initial_equilibrium_angle_rad",
     "smib_swing_rhs",
 ]
