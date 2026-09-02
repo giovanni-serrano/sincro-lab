@@ -2,9 +2,11 @@
 
 from sincrolab.analysis.equal_area import (
     DEFAULT_AREA_TOLERANCE_PU_RAD,
+    CriticalClearingAngleResult,
     EqualAreaAssessment,
     EqualAreaStatus,
     assess_equal_area,
+    compute_critical_clearing_angle,
 )
 from sincrolab.analysis.first_swing import (
     FirstSwingAssessment,
@@ -16,6 +18,7 @@ from sincrolab.analysis.first_swing import (
 
 __all__ = [
     "DEFAULT_AREA_TOLERANCE_PU_RAD",
+    "CriticalClearingAngleResult",
     "EqualAreaAssessment",
     "EqualAreaStatus",
     "FirstSwingAssessment",
@@ -24,4 +27,5 @@ __all__ = [
     "FirstSwingStatus",
     "assess_equal_area",
     "assess_smib_first_swing",
+    "compute_critical_clearing_angle",
 ]

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from math import cos, isfinite, pi
+from math import acos, cos, isfinite, pi, ulp
 
 from sincrolab.models.power_angle import (
     electrical_power_pu,
@@ -56,6 +56,17 @@ class EqualAreaAssessment:
     area_tolerance_pu_rad: float
 
 
+@dataclass(frozen=True)
+class CriticalClearingAngleResult:
+    """Closed-form critical clearing angle and its equilibrium references."""
+
+    delta_initial_rad: float
+    delta_stable_post_rad: float
+    delta_unstable_post_rad: float
+    critical_cosine_argument: float
+    delta_critical_rad: float
+
+
 def assess_equal_area(
     parameters: SMIBParameters,
     network: SMIBTransientNetwork,
@@ -77,15 +88,11 @@ def assess_equal_area(
     )
     _validate_supported_power_regime(parameters, network)
 
-    delta_initial_rad = initial_equilibrium_angle_rad(
-        Pm_pu=parameters.Pm_pu,
-        Pmax_prefault_pu=network.Pmax_prefault_pu,
-    )
-    delta_stable_post_rad = equilibrium_angle_rad(
-        Pm_pu=parameters.Pm_pu,
-        Pmax_pu=network.Pmax_postfault_pu,
-    )
-    delta_unstable_post_rad = pi - delta_stable_post_rad
+    (
+        delta_initial_rad,
+        delta_stable_post_rad,
+        delta_unstable_post_rad,
+    ) = _equal_area_equilibrium_angles_rad(parameters, network)
     _validate_clearing_angle(
         delta_clear_rad=delta_clear_rad,
         delta_initial_rad=delta_initial_rad,
@@ -171,14 +178,84 @@ def assess_equal_area(
     )
 
 
+def compute_critical_clearing_angle(
+    parameters: SMIBParameters,
+    network: SMIBTransientNetwork,
+) -> CriticalClearingAngleResult:
+    """Return the closed-form critical clearing angle for classical EAC.
+
+    The result is angular only. Event timestamps, inertia, frequency and the
+    time-domain solver do not enter the critical-angle expression.
+    """
+    _validate_zero_damping(parameters)
+    _validate_supported_power_regime(parameters, network)
+    _validate_forward_fault_onset(network)
+    (
+        delta_initial_rad,
+        delta_stable_post_rad,
+        delta_unstable_post_rad,
+    ) = _equal_area_equilibrium_angles_rad(parameters, network)
+
+    cosine_denominator = (
+        network.Pmax_postfault_pu - network.Pmax_fault_pu
+    )
+    if cosine_denominator == 0.0:
+        raise ValueError(
+            "critical clearing angle requires distinct fault and postfault "
+            "transfer capabilities"
+        )
+
+    # Expanding H16's piecewise areas cancels the linear clearing-angle terms.
+    # The same cosine equation therefore applies on either side of the stable
+    # postfault equilibrium.
+    critical_cosine_argument = (
+        network.Pmax_postfault_pu * cos(delta_unstable_post_rad)
+        + parameters.Pm_pu
+        * (delta_unstable_post_rad - delta_initial_rad)
+        - network.Pmax_fault_pu * cos(delta_initial_rad)
+    ) / cosine_denominator
+    critical_cosine_argument = _validated_acos_argument(
+        critical_cosine_argument
+    )
+    delta_critical_rad = acos(critical_cosine_argument)
+    if delta_critical_rad <= delta_initial_rad:
+        raise ValueError(
+            "critical clearing angle must be greater than "
+            "delta_initial_rad for the supported forward excursion"
+        )
+    if delta_critical_rad >= delta_unstable_post_rad:
+        raise ValueError(
+            "critical clearing angle must be less than "
+            "delta_unstable_post_rad"
+        )
+
+    assessment = assess_equal_area(
+        parameters,
+        network,
+        delta_clear_rad=delta_critical_rad,
+    )
+    if assessment.status is not EqualAreaStatus.AT_LIMIT:
+        raise ArithmeticError(
+            "closed-form critical angle does not balance equal-area within "
+            "the default area tolerance"
+        )
+
+    return CriticalClearingAngleResult(
+        delta_initial_rad=delta_initial_rad,
+        delta_stable_post_rad=delta_stable_post_rad,
+        delta_unstable_post_rad=delta_unstable_post_rad,
+        critical_cosine_argument=critical_cosine_argument,
+        delta_critical_rad=delta_critical_rad,
+    )
+
+
 def _validate_scalar_inputs(
     parameters: SMIBParameters,
     *,
     delta_clear_rad: float,
     area_tolerance_pu_rad: float,
 ) -> None:
-    if parameters.D_pu != 0.0:
-        raise ValueError("equal-area assessment requires D_pu == 0")
+    _validate_zero_damping(parameters)
     if not isfinite(delta_clear_rad):
         raise ValueError("delta_clear_rad must be finite")
     if (
@@ -189,6 +266,11 @@ def _validate_scalar_inputs(
             "area_tolerance_pu_rad must be finite and greater than or equal "
             "to zero"
         )
+
+
+def _validate_zero_damping(parameters: SMIBParameters) -> None:
+    if parameters.D_pu != 0.0:
+        raise ValueError("equal-area assessment requires D_pu == 0")
 
 
 def _validate_supported_power_regime(
@@ -205,6 +287,47 @@ def _validate_supported_power_regime(
             "equal-area assessment requires "
             "0 < Pm_pu < Pmax_postfault_pu"
         )
+
+
+def _validate_forward_fault_onset(network: SMIBTransientNetwork) -> None:
+    if network.Pmax_fault_pu >= network.Pmax_prefault_pu:
+        raise ValueError(
+            "critical clearing angle requires "
+            "Pmax_fault_pu < Pmax_prefault_pu for forward acceleration"
+        )
+
+
+def _equal_area_equilibrium_angles_rad(
+    parameters: SMIBParameters,
+    network: SMIBTransientNetwork,
+) -> tuple[float, float, float]:
+    delta_initial_rad = initial_equilibrium_angle_rad(
+        Pm_pu=parameters.Pm_pu,
+        Pmax_prefault_pu=network.Pmax_prefault_pu,
+    )
+    delta_stable_post_rad = equilibrium_angle_rad(
+        Pm_pu=parameters.Pm_pu,
+        Pmax_pu=network.Pmax_postfault_pu,
+    )
+    return (
+        delta_initial_rad,
+        delta_stable_post_rad,
+        pi - delta_stable_post_rad,
+    )
+
+
+def _validated_acos_argument(argument: float) -> float:
+    if not isfinite(argument):
+        raise ValueError("critical cosine argument must be finite")
+    if -1.0 <= argument <= 1.0:
+        return argument
+
+    boundary = 1.0 if argument > 1.0 else -1.0
+    # Eight ULP cover rounding from the short closed-form expression without
+    # clipping a materially invalid physical configuration into acos' domain.
+    if abs(argument - boundary) <= 8.0 * ulp(boundary):
+        return boundary
+    raise ValueError("critical cosine argument must be within [-1, 1]")
 
 
 def _validate_clearing_angle(
