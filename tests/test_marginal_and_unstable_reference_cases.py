@@ -1,5 +1,4 @@
 import json
-from dataclasses import replace
 from math import asin, pi
 from pathlib import Path
 from typing import Any
@@ -128,7 +127,6 @@ def test_h14_reference_cases_contain_reproducible_synthetic_inputs() -> None:
         assert case["initial_state"]["delta_rad_source"] == (
             "prefault_equilibrium"
         )
-        assert parameters.Pmax_pu == network.Pmax_prefault_pu
         assert initial_state.delta_rad == pytest.approx(asin(0.7 / 1.2))
         assert initial_state.omega_dev_pu == 0.0
 
@@ -179,29 +177,26 @@ def test_near_limit_case_reverses_with_reduced_first_swing_margin() -> None:
     fault_index = int(
         np.flatnonzero(result.time_s == network.t_fault_s)[0]
     )
-    fault_parameters = replace(parameters, Pmax_pu=network.Pmax_fault_pu)
     fault_boundary_derivative = smib_swing_rhs(
         network.t_fault_s,
         np.array(
             [result.delta_rad[fault_index], result.omega_dev_pu[fault_index]]
         ),
-        fault_parameters,
+        parameters,
+        Pmax_pu=network.Pmax_fault_pu,
     )
     assert fault_boundary_derivative[1] > 0.05
     assert result.omega_dev_pu[clear_index] > (
         stable_result.omega_dev_pu[stable_clear_index]
     )
 
-    postfault_parameters = replace(
-        parameters,
-        Pmax_pu=network.Pmax_postfault_pu,
-    )
     postfault_derivative_at_clearing = smib_swing_rhs(
         network.t_clear_s,
         np.array(
             [result.delta_rad[clear_index], result.omega_dev_pu[clear_index]]
         ),
-        postfault_parameters,
+        parameters,
+        Pmax_pu=network.Pmax_postfault_pu,
     )
     assert postfault_derivative_at_clearing[1] < -0.04
 

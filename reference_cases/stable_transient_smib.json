@@ -10,8 +10,7 @@
     "H_s": 3.5,
     "D_pu": 0.2,
     "f_base_hz": 60.0,
-    "Pm_pu": 0.7,
-    "Pmax_pu": 1.2
+    "Pm_pu": 0.7
   },
   "transient_network": {
     "Pmax_prefault_pu": 1.2,

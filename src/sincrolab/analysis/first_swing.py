@@ -5,14 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from math import pi
-from typing import TYPE_CHECKING
 
 from sincrolab.models.power_angle import equilibrium_angle_rad
 from sincrolab.models.smib import SMIBParameters
 from sincrolab.models.transient_network import SMIBTransientNetwork
-
-if TYPE_CHECKING:
-    from sincrolab.application.results import SMIBSimulationResult
+from sincrolab.simulation import SMIBTransientSimulationResult
 
 
 class FirstSwingStatus(Enum):
@@ -69,9 +66,7 @@ class FirstSwingAssessment:
 
 
 def assess_smib_first_swing(
-    result: SMIBSimulationResult,
-    parameters: SMIBParameters,
-    network: SMIBTransientNetwork,
+    result: SMIBTransientSimulationResult,
 ) -> FirstSwingAssessment:
     """Assess the sampled forward first swing of a classical SMIB trajectory.
 
@@ -80,6 +75,8 @@ def assess_smib_first_swing(
     crossing are ordered only at the resolution of adjacent samples; no
     interpolation or root finding is performed.
     """
+    parameters = result.parameters
+    network = result.network
     delta_stable_post_rad, delta_unstable_post_rad = (
         _postfault_equilibrium_angles_rad(parameters, network)
     )
@@ -178,7 +175,7 @@ def _postfault_equilibrium_angles_rad(
 
 
 def _exact_clearing_index(
-    result: SMIBSimulationResult,
+    result: SMIBTransientSimulationResult,
     network: SMIBTransientNetwork,
 ) -> int:
     clearing_indices = [
@@ -192,7 +189,7 @@ def _exact_clearing_index(
 
 
 def _first_positive_speed_index(
-    result: SMIBSimulationResult,
+    result: SMIBTransientSimulationResult,
     clear_index: int,
 ) -> int | None:
     for index in range(clear_index, result.time_s.size):
@@ -202,7 +199,7 @@ def _first_positive_speed_index(
 
 
 def _event_bracket(
-    result: SMIBSimulationResult,
+    result: SMIBTransientSimulationResult,
     left_index: int,
 ) -> FirstSwingEventBracket:
     right_index = left_index + 1

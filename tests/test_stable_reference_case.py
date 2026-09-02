@@ -1,5 +1,4 @@
 import json
-from dataclasses import replace
 from math import asin, pi
 from pathlib import Path
 from typing import Any
@@ -68,7 +67,6 @@ def test_stable_reference_case_contains_reproducible_synthetic_inputs() -> None:
     assert case["initial_state"]["delta_rad_source"] == (
         "prefault_equilibrium"
     )
-    assert parameters.Pmax_pu == network.Pmax_prefault_pu
     assert initial_state.delta_rad == pytest.approx(asin(0.7 / 1.2))
     assert initial_state.omega_dev_pu == 0.0
 
@@ -101,7 +99,6 @@ def test_stable_reference_case_exhibits_a_bounded_first_swing() -> None:
     ) <= 1e-12
     assert np.max(np.abs(result.omega_dev_pu[: fault_index + 1])) <= 1e-13
 
-    fault_parameters = replace(parameters, Pmax_pu=network.Pmax_fault_pu)
     fault_boundary_derivative = smib_swing_rhs(
         network.t_fault_s,
         np.array(
@@ -110,21 +107,19 @@ def test_stable_reference_case_exhibits_a_bounded_first_swing() -> None:
                 result.omega_dev_pu[fault_index],
             ]
         ),
-        fault_parameters,
+        parameters,
+        Pmax_pu=network.Pmax_fault_pu,
     )
     assert fault_boundary_derivative[1] > 0.05
     assert result.omega_dev_pu[clear_index] > 0.005
 
-    postfault_parameters = replace(
-        parameters,
-        Pmax_pu=network.Pmax_postfault_pu,
-    )
     postfault_accelerations = np.array(
         [
             smib_swing_rhs(
                 float(time_s),
                 np.array([delta_rad, omega_dev_pu]),
-                postfault_parameters,
+                parameters,
+                Pmax_pu=network.Pmax_postfault_pu,
             )[1]
             for time_s, delta_rad, omega_dev_pu in zip(
                 result.time_s[clear_index:],

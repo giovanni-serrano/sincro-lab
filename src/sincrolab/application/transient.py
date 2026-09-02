@@ -1,12 +1,10 @@
 """Application orchestration for piecewise-constant SMIB disturbances."""
 
-from dataclasses import replace
 from functools import partial
 from math import isfinite
 
 import numpy as np
 
-from sincrolab.application.results import SMIBSimulationResult
 from sincrolab.models import (
     SMIBInitialState,
     SMIBParameters,
@@ -14,6 +12,10 @@ from sincrolab.models import (
     smib_swing_rhs,
 )
 from sincrolab.numerical import classical_rk4
+from sincrolab.simulation import (
+    SMIBSimulationResult,
+    SMIBTransientSimulationResult,
+)
 
 
 def simulate_smib_transient(
@@ -24,7 +26,7 @@ def simulate_smib_transient(
     t_start_s: float,
     t_end_s: float,
     dt_s: float,
-) -> SMIBSimulationResult:
+) -> SMIBTransientSimulationResult:
     """Integrate a complete prefault, fault, and postfault SMIB sequence.
 
     Each interval uses a separate RK4 call with constant network physics. The
@@ -51,8 +53,11 @@ def simulate_smib_transient(
     for segment_index, (segment_start_s, segment_end_s, Pmax_pu) in enumerate(
         segments
     ):
-        segment_parameters = replace(parameters, Pmax_pu=Pmax_pu)
-        rhs = partial(smib_swing_rhs, parameters=segment_parameters)
+        rhs = partial(
+            smib_swing_rhs,
+            parameters=parameters,
+            Pmax_pu=Pmax_pu,
+        )
         segment_time_s, segment_states = classical_rk4(
             rhs=rhs,
             y0=current_state,
@@ -71,10 +76,18 @@ def simulate_smib_transient(
 
     time_s = np.concatenate(time_parts)
     states = np.concatenate(state_parts, axis=0)
-    return SMIBSimulationResult(
-        time_s=time_s,
-        delta_rad=states[:, 0],
-        omega_dev_pu=states[:, 1],
+    return SMIBTransientSimulationResult(
+        trajectory=SMIBSimulationResult(
+            time_s=time_s,
+            delta_rad=states[:, 0],
+            omega_dev_pu=states[:, 1],
+        ),
+        parameters=parameters,
+        initial_state=initial_state,
+        network=network,
+        t_start_s=t_start_s,
+        t_end_s=t_end_s,
+        dt_s=dt_s,
     )
 
 

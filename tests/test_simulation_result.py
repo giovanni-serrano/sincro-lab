@@ -15,6 +15,9 @@ from sincrolab.application.results import (
     SMIBSimulationResult as ResultsModuleResult,
 )
 from sincrolab.models import SMIBParameters
+from sincrolab.simulation import (
+    SMIBSimulationResult as SimulationModuleResult,
+)
 
 
 def _parameters() -> SMIBParameters:
@@ -23,7 +26,6 @@ def _parameters() -> SMIBParameters:
         D_pu=0.2,
         f_base_hz=60.0,
         Pm_pu=0.7,
-        Pmax_pu=1.2,
     )
 
 
@@ -56,6 +58,7 @@ def test_result_has_exact_scientific_series_and_neutral_public_location() -> Non
     ]
     assert SMIBSimulationResult is ResultsModuleResult
     assert SMIBSimulationResult is EquilibriumModuleResult
+    assert SMIBSimulationResult is SimulationModuleResult
 
 
 def test_result_normalizes_series_to_float64_read_only_vectors() -> None:
@@ -152,10 +155,15 @@ def test_public_simulations_return_the_shared_result_contract(
         "dt_s": 1.0 / 64.0,
     }
     if simulation_name == "equilibrium":
-        result = simulate_smib_equilibrium(_parameters(), **common_args)
+        result = simulate_smib_equilibrium(
+            _parameters(),
+            Pmax_pu=1.2,
+            **common_args,
+        )
     else:
         result = simulate_smib_free_disturbance(
             _parameters(),
+            Pmax_pu=1.2,
             delta_offset_rad=0.05,
             **common_args,
         )

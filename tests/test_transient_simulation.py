@@ -1,10 +1,14 @@
 from dataclasses import replace
+from math import pi
 
 import numpy as np
 import pytest
 
 import sincrolab.application.transient as transient_module
-from sincrolab.application import SMIBSimulationResult, simulate_smib_transient
+from sincrolab.application import (
+    SMIBTransientSimulationResult,
+    simulate_smib_transient,
+)
 from sincrolab.models import (
     SMIBInitialState,
     SMIBParameters,
@@ -20,7 +24,6 @@ def _parameters(**overrides: float) -> SMIBParameters:
         "D_pu": 0.0,
         "f_base_hz": 60.0,
         "Pm_pu": 0.7,
-        "Pmax_pu": 1.7,
     }
     values.update(overrides)
     return SMIBParameters(**values)
@@ -65,7 +68,13 @@ def test_transient_simulation_returns_exact_event_boundaries() -> None:
         dt_s=0.02,
     )
 
-    assert isinstance(result, SMIBSimulationResult)
+    assert isinstance(result, SMIBTransientSimulationResult)
+    assert result.parameters is parameters
+    assert result.initial_state is initial_state
+    assert result.network is network
+    assert result.t_start_s == 0.0
+    assert result.t_end_s == 0.5
+    assert result.dt_s == 0.02
     assert result.time_s[0] == 0.0
     assert result.time_s[-1] == 0.5
     assert np.count_nonzero(result.time_s == network.t_fault_s) == 1
@@ -94,10 +103,12 @@ def test_transient_simulation_uses_three_constant_physics_segments(
         duration = t_end - t_start
         terminal_state = y0 + np.array([duration, 2.0 * duration])
         parameters = rhs.keywords["parameters"]  # type: ignore[union-attr]
+        Pmax_pu = rhs.keywords["Pmax_pu"]  # type: ignore[union-attr]
         calls.append(
             {
                 "rhs": rhs,
                 "parameters": parameters,
+                "Pmax_pu": Pmax_pu,
                 "y0": y0,
                 "terminal_state": terminal_state.copy(),
                 "interval": (t_start, t_end),
@@ -112,7 +123,7 @@ def test_transient_simulation_uses_three_constant_physics_segments(
         )
 
     monkeypatch.setattr(transient_module, "classical_rk4", rk4_spy)
-    parameters = _parameters(Pmax_pu=1.7)
+    parameters = _parameters()
     network = _network()
     initial_state = SMIBInitialState(delta_rad=0.6, omega_dev_pu=0.01)
 
@@ -131,19 +142,15 @@ def test_transient_simulation_uses_three_constant_physics_segments(
         (network.t_fault_s, network.t_clear_s),
         (network.t_clear_s, 0.5),
     ]
-    assert [call["parameters"].Pmax_pu for call in calls] == [  # type: ignore[union-attr]
+    assert [call["Pmax_pu"] for call in calls] == [
         network.Pmax_prefault_pu,
         network.Pmax_fault_pu,
         network.Pmax_postfault_pu,
     ]
     for call in calls:
-        segment_parameters = call["parameters"]
         assert call["rhs"].func is smib_swing_rhs  # type: ignore[union-attr]
         assert call["dt"] == 0.02
-        assert replace(  # type: ignore[arg-type]
-            segment_parameters,
-            Pmax_pu=parameters.Pmax_pu,
-        ) == parameters
+        assert call["parameters"] is parameters
 
     np.testing.assert_array_equal(calls[1]["y0"], calls[0]["terminal_state"])
     np.testing.assert_array_equal(calls[2]["y0"], calls[1]["terminal_state"])
@@ -263,17 +270,64 @@ def test_severe_fault_produces_positive_rotor_acceleration() -> None:
     boundary_state = np.array(
         [result.delta_rad[fault_index], result.omega_dev_pu[fault_index]]
     )
-    fault_parameters = replace(parameters, Pmax_pu=network.Pmax_fault_pu)
     fault_derivatives = smib_swing_rhs(
         time_s=network.t_fault_s,
         state=boundary_state,
-        parameters=fault_parameters,
+        parameters=parameters,
+        Pmax_pu=network.Pmax_fault_pu,
     )
 
     assert np.max(np.abs(result.omega_dev_pu[: fault_index + 1])) <= 1e-13
     assert fault_derivatives[1] > 0.0
     assert result.omega_dev_pu[fault_index + 1] > result.omega_dev_pu[fault_index]
     assert result.delta_rad[fault_index + 1] > result.delta_rad[fault_index]
+
+
+def test_zero_transfer_undamped_fault_matches_constant_acceleration_solution() -> None:
+    parameters = _parameters(D_pu=0.0)
+    network = _network(
+        Pmax_fault_pu=0.0,
+        Pmax_postfault_pu=1.2,
+        t_fault_s=0.1,
+        t_clear_s=0.3,
+    )
+    initial_state = _prefault_equilibrium_state(parameters, network)
+
+    result = simulate_smib_transient(
+        parameters,
+        initial_state,
+        network,
+        t_start_s=0.0,
+        t_end_s=0.4,
+        dt_s=0.02,
+    )
+    fault_mask = (
+        (result.time_s >= network.t_fault_s)
+        & (result.time_s <= network.t_clear_s)
+    )
+    elapsed_fault_s = result.time_s[fault_mask] - network.t_fault_s
+    acceleration_pu_per_s = parameters.Pm_pu / (2.0 * parameters.H_s)
+    omega_s_rad_per_s = 2.0 * pi * parameters.f_base_hz
+    expected_omega_dev_pu = acceleration_pu_per_s * elapsed_fault_s
+    expected_delta_rad = initial_state.delta_rad + (
+        0.5
+        * omega_s_rad_per_s
+        * acceleration_pu_per_s
+        * elapsed_fault_s**2
+    )
+
+    np.testing.assert_allclose(
+        result.omega_dev_pu[fault_mask],
+        expected_omega_dev_pu,
+        rtol=0.0,
+        atol=2e-15,
+    )
+    np.testing.assert_allclose(
+        result.delta_rad[fault_mask],
+        expected_delta_rad,
+        rtol=0.0,
+        atol=2e-14,
+    )
 
 
 def test_equal_network_capabilities_preserve_prefault_equilibrium() -> None:

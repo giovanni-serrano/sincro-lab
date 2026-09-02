@@ -12,6 +12,8 @@ from sincrolab.models import (
     smib_swing_rhs,
 )
 
+PMAX_PU = 1.2
+
 
 def _parameters(**overrides: float) -> SMIBParameters:
     values = {
@@ -19,7 +21,6 @@ def _parameters(**overrides: float) -> SMIBParameters:
         "D_pu": 0.2,
         "f_base_hz": 60.0,
         "Pm_pu": 0.7,
-        "Pmax_pu": 1.2,
     }
     values.update(overrides)
     return SMIBParameters(**values)
@@ -29,13 +30,14 @@ def test_equilibrium_simulation_returns_structured_equilibrium_trajectory() -> N
     parameters = _parameters()
     result = simulate_smib_equilibrium(
         parameters,
+        Pmax_pu=PMAX_PU,
         t_start_s=1.0,
         t_end_s=2.0,
         dt_s=1.0 / 64.0,
     )
     expected_delta0_rad = initial_equilibrium_angle_rad(
         Pm_pu=parameters.Pm_pu,
-        Pmax_prefault_pu=parameters.Pmax_pu,
+        Pmax_prefault_pu=PMAX_PU,
     )
 
     assert isinstance(result, SMIBSimulationResult)
@@ -54,12 +56,13 @@ def test_equilibrium_simulation_returns_structured_equilibrium_trajectory() -> N
 
     initial_Pe_pu = electrical_power_pu(
         delta_rad=result.delta_rad[0],
-        Pmax_pu=parameters.Pmax_pu,
+        Pmax_pu=PMAX_PU,
     )
     initial_derivatives = smib_swing_rhs(
         time_s=result.time_s[0],
         state=np.array([result.delta_rad[0], result.omega_dev_pu[0]]),
         parameters=parameters,
+        Pmax_pu=PMAX_PU,
     )
     # libm implementations may differ by several ULP in the asin/sin round
     # trip; 1e-14 remains a roundoff-scale tolerance for O(1) pu powers.
@@ -81,6 +84,7 @@ def test_equilibrium_simulation_preserves_equilibrium_with_roundoff_bounds() -> 
     parameters = _parameters()
     result = simulate_smib_equilibrium(
         parameters,
+        Pmax_pu=PMAX_PU,
         t_start_s=0.0,
         t_end_s=10.0,
         dt_s=1.0 / 64.0,
@@ -111,6 +115,7 @@ def test_equilibrium_simulation_delegates_invalid_time_contract(
     with pytest.raises(ValueError):
         simulate_smib_equilibrium(
             _parameters(),
+            Pmax_pu=PMAX_PU,
             t_start_s=t_start_s,
             t_end_s=t_end_s,
             dt_s=dt_s,
@@ -123,6 +128,7 @@ def test_equilibrium_simulation_does_not_mutate_parameters() -> None:
 
     simulate_smib_equilibrium(
         parameters,
+        Pmax_pu=PMAX_PU,
         t_start_s=0.0,
         t_end_s=1.0,
         dt_s=1.0 / 64.0,
@@ -132,11 +138,12 @@ def test_equilibrium_simulation_does_not_mutate_parameters() -> None:
 
 
 def test_equilibrium_simulation_preserves_missing_equilibrium_error() -> None:
-    parameters = _parameters(Pm_pu=1.3, Pmax_pu=1.2)
+    parameters = _parameters(Pm_pu=1.3)
 
     with pytest.raises(ValueError, match=r"within \[-1, 1\]"):
         simulate_smib_equilibrium(
             parameters,
+            Pmax_pu=PMAX_PU,
             t_start_s=0.0,
             t_end_s=1.0,
             dt_s=0.1,
@@ -155,6 +162,7 @@ def test_equilibrium_simulation_uses_classical_rk4(monkeypatch: pytest.MonkeyPat
     parameters = _parameters()
     simulate_smib_equilibrium(
         parameters,
+        Pmax_pu=PMAX_PU,
         t_start_s=1.0,
         t_end_s=2.0,
         dt_s=1.0 / 64.0,
@@ -164,7 +172,7 @@ def test_equilibrium_simulation_uses_classical_rk4(monkeypatch: pytest.MonkeyPat
     call = calls[0]
     expected_delta0_rad = initial_equilibrium_angle_rad(
         Pm_pu=parameters.Pm_pu,
-        Pmax_prefault_pu=parameters.Pmax_pu,
+        Pmax_prefault_pu=PMAX_PU,
     )
     np.testing.assert_allclose(call["y0"], [expected_delta0_rad, 0.0])
     assert call["t_start"] == 1.0

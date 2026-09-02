@@ -1,9 +1,11 @@
 {
   "schema_version": 1,
-  "case_id": "unstable_transient_smib",
+  "case_id": "near_critical_adversarial",
   "metadata": {
     "provenance": "synthetic",
-    "purpose": "Unstable first-swing regression and educational reference within the controlled SincroLab family.",
+    "purpose": "Adversarial regression near the sampled first-swing boundary for SincroLab.",
+    "adversarial_characteristic": "The sampled assessment is STABLE at the tested dt_s values up to 0.1 and UNSTABLE at dt_s = 0.2 for the same model inputs.",
+    "limitation": "This case exposes time-step sensitivity; it is not a CCT result or a claim that either coarse trajectory is numerically converged.",
     "represents_specific_real_system": false
   },
   "smib_parameters": {
@@ -17,7 +19,7 @@
     "Pmax_fault_pu": 0.2,
     "Pmax_postfault_pu": 1.1,
     "t_fault_s": 0.1,
-    "t_clear_s": 0.35
+    "t_clear_s": 0.3045
   },
   "initial_state": {
     "delta_rad_source": "prefault_equilibrium",

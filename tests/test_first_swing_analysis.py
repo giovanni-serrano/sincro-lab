@@ -16,6 +16,7 @@ from sincrolab.analysis import (
 )
 from sincrolab.application import (
     SMIBSimulationResult,
+    SMIBTransientSimulationResult,
     simulate_smib_transient,
 )
 from sincrolab.models import (
@@ -45,7 +46,6 @@ def _parameters(*, Pm_pu: float = 0.7) -> SMIBParameters:
         D_pu=0.2,
         f_base_hz=60.0,
         Pm_pu=Pm_pu,
-        Pmax_pu=1.2,
     )
 
 
@@ -67,7 +67,7 @@ def _load_reference_case(case_name: str) -> dict[str, Any]:
 
 def _simulate_reference_case(
     case_name: str,
-) -> tuple[SMIBParameters, SMIBTransientNetwork, SMIBSimulationResult]:
+) -> tuple[SMIBParameters, SMIBTransientNetwork, SMIBTransientSimulationResult]:
     case = _load_reference_case(case_name)
     parameters = SMIBParameters(**case["smib_parameters"])
     network = SMIBTransientNetwork(**case["transient_network"])
@@ -90,12 +90,34 @@ def _simulate_reference_case(
     return parameters, network, result
 
 
-def _no_positive_excursion_result() -> SMIBSimulationResult:
-    return SMIBSimulationResult(
+def _transient_result(
+    trajectory: SMIBSimulationResult,
+    *,
+    parameters: SMIBParameters | None = None,
+    network: SMIBTransientNetwork | None = None,
+) -> SMIBTransientSimulationResult:
+    resolved_parameters = parameters or _parameters()
+    resolved_network = network or _network()
+    return SMIBTransientSimulationResult(
+        trajectory=trajectory,
+        parameters=resolved_parameters,
+        initial_state=SMIBInitialState(
+            delta_rad=float(trajectory.delta_rad[0]),
+            omega_dev_pu=float(trajectory.omega_dev_pu[0]),
+        ),
+        network=resolved_network,
+        t_start_s=float(trajectory.time_s[0]),
+        t_end_s=float(trajectory.time_s[-1]),
+        dt_s=0.1,
+    )
+
+
+def _no_positive_excursion_result() -> SMIBTransientSimulationResult:
+    return _transient_result(SMIBSimulationResult(
         time_s=np.array([0.1, 0.2, 0.3]),
         delta_rad=np.array([0.6, 0.7, 0.69]),
         omega_dev_pu=np.array([0.0, 0.0, -0.001]),
-    )
+    ))
 
 
 @pytest.mark.parametrize(
@@ -125,7 +147,7 @@ def test_reference_cases_receive_expected_first_swing_assessment(
 ) -> None:
     parameters, network, result = _simulate_reference_case(case_name)
 
-    assessment = assess_smib_first_swing(result, parameters, network)
+    assessment = assess_smib_first_swing(result)
 
     delta_stable_post_rad = asin(
         parameters.Pm_pu / network.Pmax_postfault_pu
@@ -167,11 +189,7 @@ def test_near_limit_reference_remains_stable_with_smaller_margin() -> None:
     results = {}
     for case_name in ("stable", "near_limit"):
         parameters, network, result = _simulate_reference_case(case_name)
-        assessments[case_name] = assess_smib_first_swing(
-            result,
-            parameters,
-            network,
-        )
+        assessments[case_name] = assess_smib_first_swing(result)
         results[case_name] = result
 
     margins = {}
@@ -192,25 +210,21 @@ def test_near_limit_reference_remains_stable_with_smaller_margin() -> None:
 
 def test_truncated_first_swing_is_indeterminate() -> None:
     parameters, network, full_result = _simulate_reference_case("stable")
-    full_assessment = assess_smib_first_swing(
-        full_result,
-        parameters,
-        network,
-    )
+    full_assessment = assess_smib_first_swing(full_result)
     reversal_bracket = full_assessment.reversal_bracket
     assert reversal_bracket is not None
     truncated_end = reversal_bracket.left_index + 1
-    truncated_result = SMIBSimulationResult(
-        time_s=full_result.time_s[:truncated_end],
-        delta_rad=full_result.delta_rad[:truncated_end],
-        omega_dev_pu=full_result.omega_dev_pu[:truncated_end],
+    truncated_result = replace(
+        full_result,
+        trajectory=SMIBSimulationResult(
+            time_s=full_result.time_s[:truncated_end],
+            delta_rad=full_result.delta_rad[:truncated_end],
+            omega_dev_pu=full_result.omega_dev_pu[:truncated_end],
+        ),
+        t_end_s=float(full_result.time_s[truncated_end - 1]),
     )
 
-    assessment = assess_smib_first_swing(
-        truncated_result,
-        parameters,
-        network,
-    )
+    assessment = assess_smib_first_swing(truncated_result)
 
     assert truncated_result.omega_dev_pu[-1] > 0.0
     assert assessment.status is FirstSwingStatus.INDETERMINATE
@@ -220,11 +234,7 @@ def test_truncated_first_swing_is_indeterminate() -> None:
 
 
 def test_absent_positive_excursion_is_indeterminate() -> None:
-    assessment = assess_smib_first_swing(
-        _no_positive_excursion_result(),
-        _parameters(),
-        _network(),
-    )
+    assessment = assess_smib_first_swing(_no_positive_excursion_result())
 
     assert assessment.status is FirstSwingStatus.INDETERMINATE
     assert assessment.reason is FirstSwingReason.NO_POSITIVE_EXCURSION
@@ -233,17 +243,13 @@ def test_absent_positive_excursion_is_indeterminate() -> None:
 
 
 def test_zero_at_clearing_does_not_count_as_reversal() -> None:
-    result = SMIBSimulationResult(
+    result = _transient_result(SMIBSimulationResult(
         time_s=np.array([0.1, 0.2, 0.3, 0.4]),
         delta_rad=np.array([0.6, 0.7, 0.8, 0.81]),
         omega_dev_pu=np.array([0.0, 0.0, 0.01, 0.0]),
-    )
+    ))
 
-    assessment = assess_smib_first_swing(
-        result,
-        _parameters(),
-        _network(),
-    )
+    assessment = assess_smib_first_swing(result)
 
     assert assessment.status is FirstSwingStatus.STABLE
     assert assessment.reason is FirstSwingReason.REVERSAL_BEFORE_CROSSING
@@ -264,7 +270,7 @@ def test_positive_excursion_at_or_beyond_unstable_equilibrium_is_ambiguous(
     delta_unstable_post_rad = pi - asin(
         parameters.Pm_pu / network.Pmax_postfault_pu
     )
-    result = SMIBSimulationResult(
+    result = _transient_result(SMIBSimulationResult(
         time_s=np.array([0.1, 0.2, 0.3]),
         delta_rad=np.array(
             [
@@ -274,9 +280,9 @@ def test_positive_excursion_at_or_beyond_unstable_equilibrium_is_ambiguous(
             ]
         ),
         omega_dev_pu=np.array([0.0, 0.01, 0.01]),
-    )
+    ), parameters=parameters, network=network)
 
-    assessment = assess_smib_first_swing(result, parameters, network)
+    assessment = assess_smib_first_swing(result)
 
     assert assessment.status is FirstSwingStatus.INDETERMINATE
     assert assessment.reason is FirstSwingReason.EVENT_ORDER_AMBIGUOUS
@@ -290,7 +296,7 @@ def test_crossing_and_reversal_in_same_sample_interval_are_indeterminate() -> No
     delta_unstable_post_rad = pi - asin(
         parameters.Pm_pu / network.Pmax_postfault_pu
     )
-    result = SMIBSimulationResult(
+    result = _transient_result(SMIBSimulationResult(
         time_s=np.array([0.1, 0.2, 0.3]),
         delta_rad=np.array(
             [
@@ -300,9 +306,9 @@ def test_crossing_and_reversal_in_same_sample_interval_are_indeterminate() -> No
             ]
         ),
         omega_dev_pu=np.array([0.0, 0.01, 0.0]),
-    )
+    ), parameters=parameters, network=network)
 
-    assessment = assess_smib_first_swing(result, parameters, network)
+    assessment = assess_smib_first_swing(result)
 
     assert assessment.status is FirstSwingStatus.INDETERMINATE
     assert assessment.reason is FirstSwingReason.EVENT_ORDER_AMBIGUOUS
@@ -319,9 +325,10 @@ def test_assessment_rejects_unsupported_mechanical_power(Pm_pu: float) -> None:
         match=r"0 < Pm_pu < Pmax_postfault_pu",
     ):
         assess_smib_first_swing(
-            _no_positive_excursion_result(),
-            _parameters(Pm_pu=Pm_pu),
-            _network(),
+            replace(
+                _no_positive_excursion_result(),
+                parameters=_parameters(Pm_pu=Pm_pu),
+            )
         )
 
 
@@ -339,9 +346,7 @@ def test_assessment_rejects_nonpositive_postfault_capability(
 
     with pytest.raises(ValueError, match="Pmax_postfault_pu"):
         assess_smib_first_swing(
-            _no_positive_excursion_result(),
-            _parameters(),
-            invalid_network,
+            replace(_no_positive_excursion_result(), network=invalid_network)
         )
 
 
@@ -350,14 +355,17 @@ def test_assessment_requires_the_exact_clearing_sample() -> None:
     time_s = result.time_s.copy()
     clear_index = int(np.flatnonzero(time_s == network.t_clear_s)[0])
     time_s[clear_index] = np.nextafter(network.t_clear_s, float("inf"))
-    shifted_result = SMIBSimulationResult(
-        time_s=time_s,
-        delta_rad=result.delta_rad,
-        omega_dev_pu=result.omega_dev_pu,
+    shifted_result = replace(
+        result,
+        trajectory=SMIBSimulationResult(
+            time_s=time_s,
+            delta_rad=result.delta_rad,
+            omega_dev_pu=result.omega_dev_pu,
+        ),
     )
 
     with pytest.raises(ValueError, match="t_clear_s exactly once"):
-        assess_smib_first_swing(shifted_result, parameters, network)
+        assess_smib_first_swing(shifted_result)
 
 
 def test_assessment_is_immutable_and_does_not_mutate_inputs() -> None:
@@ -369,8 +377,8 @@ def test_assessment_is_immutable_and_does_not_mutate_inputs() -> None:
         for name in ("time_s", "delta_rad", "omega_dev_pu")
     }
 
-    first_assessment = assess_smib_first_swing(result, parameters, network)
-    second_assessment = assess_smib_first_swing(result, parameters, network)
+    first_assessment = assess_smib_first_swing(result)
+    second_assessment = assess_smib_first_swing(result)
 
     assert first_assessment == second_assessment
     assert parameters == parameters_before

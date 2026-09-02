@@ -1,4 +1,4 @@
-"""Compatibility imports for results now owned by the simulation layer."""
+"""Neutral simulation contracts shared across SincroLab layers."""
 
 from sincrolab.simulation.results import (
     SMIBSimulationResult,

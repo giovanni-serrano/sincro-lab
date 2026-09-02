@@ -13,13 +13,16 @@ def smib_swing_rhs(
     time_s: float,
     state: NDArray[np.float64],
     parameters: SMIBParameters,
+    *,
+    Pmax_pu: float,
 ) -> NDArray[np.float64]:
     """Evaluate the autonomous classical SMIB swing equation.
 
     ``state`` is ordered as ``[delta_rad, omega_dev_pu]``, where
     ``omega_dev_pu = (omega - omega_s) / omega_s`` and
     ``omega_s = 2 * pi * f_base_hz``. The returned derivatives use the same
-    order and have units ``[rad/s, pu/s]``. ``time_s`` is accepted to preserve
+    order and have units ``[rad/s, pu/s]``. ``Pmax_pu`` is the electrical
+    capability of the active network state. ``time_s`` is accepted to preserve
     the generic ``f(t, y)`` RHS contract.
     """
     del time_s
@@ -38,7 +41,7 @@ def smib_swing_rhs(
     omega_s_rad_per_s = 2.0 * pi * parameters.f_base_hz
     Pe_pu = electrical_power_pu(
         delta_rad=delta_rad,
-        Pmax_pu=parameters.Pmax_pu,
+        Pmax_pu=Pmax_pu,
     )
 
     d_delta_rad_dt = omega_s_rad_per_s * omega_dev_pu

@@ -18,6 +18,7 @@ from sincrolab.models import (
 DELTA_OFFSET_RAD = 0.05
 DT_S = 1.0 / 128.0
 T_END_S = 10.0
+PMAX_PU = 1.2
 
 
 def _parameters(**overrides: float) -> SMIBParameters:
@@ -26,7 +27,6 @@ def _parameters(**overrides: float) -> SMIBParameters:
         "D_pu": 0.0,
         "f_base_hz": 60.0,
         "Pm_pu": 0.7,
-        "Pmax_pu": 1.2,
     }
     values.update(overrides)
     return SMIBParameters(**values)
@@ -56,9 +56,14 @@ def test_zero_offset_reproduces_equilibrium_simulation() -> None:
         "dt_s": DT_S,
     }
 
-    equilibrium = simulate_smib_equilibrium(parameters, **simulation_args)
+    equilibrium = simulate_smib_equilibrium(
+        parameters,
+        Pmax_pu=PMAX_PU,
+        **simulation_args,
+    )
     disturbed = simulate_smib_free_disturbance(
         parameters,
+        Pmax_pu=PMAX_PU,
         delta_offset_rad=0.0,
         **simulation_args,
     )
@@ -98,10 +103,11 @@ def test_initial_acceleration_restores_toward_stable_equilibrium(
     parameters = _parameters()
     delta0_rad = initial_equilibrium_angle_rad(
         Pm_pu=parameters.Pm_pu,
-        Pmax_prefault_pu=parameters.Pmax_pu,
+        Pmax_prefault_pu=PMAX_PU,
     )
     result = simulate_smib_free_disturbance(
         parameters,
+        Pmax_pu=PMAX_PU,
         delta_offset_rad=delta_offset_rad,
         t_start_s=0.0,
         t_end_s=DT_S,
@@ -112,9 +118,10 @@ def test_initial_acceleration_restores_toward_stable_equilibrium(
         time_s=result.time_s[0],
         state=initial_state,
         parameters=parameters,
+        Pmax_pu=PMAX_PU,
     )
 
-    assert parameters.Pmax_pu * cos(delta0_rad) > 0.0
+    assert PMAX_PU * cos(delta0_rad) > 0.0
     assert result.delta_rad[0] - delta0_rad == pytest.approx(delta_offset_rad)
     assert result.omega_dev_pu[0] == 0.0
     assert restoring_sign * initial_derivatives[1] > 0.0
@@ -125,10 +132,11 @@ def test_undamped_response_oscillates_with_conserved_amplitude() -> None:
     parameters = _parameters(D_pu=0.0)
     delta0_rad = initial_equilibrium_angle_rad(
         Pm_pu=parameters.Pm_pu,
-        Pmax_prefault_pu=parameters.Pmax_pu,
+        Pmax_prefault_pu=PMAX_PU,
     )
     result = simulate_smib_free_disturbance(
         parameters,
+        Pmax_pu=PMAX_PU,
         delta_offset_rad=DELTA_OFFSET_RAD,
         t_start_s=0.0,
         t_end_s=T_END_S,
@@ -166,10 +174,11 @@ def test_damped_response_has_decaying_angle_and_speed_envelopes() -> None:
     parameters = _parameters(D_pu=1.0)
     delta0_rad = initial_equilibrium_angle_rad(
         Pm_pu=parameters.Pm_pu,
-        Pmax_prefault_pu=parameters.Pmax_pu,
+        Pmax_prefault_pu=PMAX_PU,
     )
     result = simulate_smib_free_disturbance(
         parameters,
+        Pmax_pu=PMAX_PU,
         delta_offset_rad=DELTA_OFFSET_RAD,
         t_start_s=0.0,
         t_end_s=T_END_S,
@@ -216,6 +225,7 @@ def test_free_disturbance_does_not_mutate_parameters() -> None:
 
     simulate_smib_free_disturbance(
         parameters,
+        Pmax_pu=PMAX_PU,
         delta_offset_rad=DELTA_OFFSET_RAD,
         t_start_s=0.0,
         t_end_s=1.0,
@@ -235,6 +245,7 @@ def test_free_disturbance_rejects_nonfinite_offset(
     with pytest.raises(ValueError, match="delta_offset_rad must be finite"):
         simulate_smib_free_disturbance(
             _parameters(),
+            Pmax_pu=PMAX_PU,
             delta_offset_rad=invalid_offset_rad,
             t_start_s=0.0,
             t_end_s=1.0,
@@ -243,11 +254,12 @@ def test_free_disturbance_rejects_nonfinite_offset(
 
 
 def test_free_disturbance_preserves_missing_equilibrium_error() -> None:
-    parameters = _parameters(Pm_pu=1.3, Pmax_pu=1.2)
+    parameters = _parameters(Pm_pu=1.3)
 
     with pytest.raises(ValueError, match=r"within \[-1, 1\]"):
         simulate_smib_free_disturbance(
             parameters,
+            Pmax_pu=PMAX_PU,
             delta_offset_rad=DELTA_OFFSET_RAD,
             t_start_s=0.0,
             t_end_s=1.0,

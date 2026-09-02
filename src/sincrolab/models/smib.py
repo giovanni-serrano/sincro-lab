@@ -6,29 +6,29 @@ from math import isfinite
 
 @dataclass(frozen=True)
 class SMIBParameters:
-    """Physical parameters of the classical SMIB model on a common pu base.
+    """Machine-side parameters of the classical SMIB model on a common base.
 
     Attributes:
         H_s: Inertia constant in seconds.
         D_pu: Damping-power coefficient in pu power per pu speed deviation.
         f_base_hz: Electrical base frequency in hertz.
         Pm_pu: Constant mechanical input power in per unit.
-        Pmax_pu: Nonnegative power-angle capability in per unit for
-            ``Pe_pu = Pmax_pu * sin(delta_rad)``.
+
+    The electrical transfer capability is supplied by the active network
+    state. Keeping it outside this value object gives ``Pmax_pu`` one owner in
+    transient simulations instead of silently overriding a machine field.
     """
 
     H_s: float
     D_pu: float
     f_base_hz: float
     Pm_pu: float
-    Pmax_pu: float
 
     def __post_init__(self) -> None:
         _require_positive_finite("H_s", self.H_s)
         _require_finite("D_pu", self.D_pu)
         _require_positive_finite("f_base_hz", self.f_base_hz)
         _require_finite("Pm_pu", self.Pm_pu)
-        _require_nonnegative_finite("Pmax_pu", self.Pmax_pu)
 
 
 @dataclass(frozen=True)
@@ -58,10 +58,3 @@ def _require_finite(name: str, value: float) -> None:
 def _require_positive_finite(name: str, value: float) -> None:
     if not isfinite(value) or value <= 0.0:
         raise ValueError(f"{name} must be finite and greater than zero")
-
-
-def _require_nonnegative_finite(name: str, value: float) -> None:
-    if not isfinite(value) or value < 0.0:
-        raise ValueError(
-            f"{name} must be finite and greater than or equal to zero"
-        )
