@@ -11,6 +11,10 @@ from sincrolab.application.clearing_time import (
     evaluate_smib_clearing_time,
     search_smib_critical_clearing_time,
 )
+from sincrolab.application.critical_clearing_cross_check import (
+    SMIBCriticalClearingCrossCheck,
+    cross_check_smib_critical_clearing,
+)
 from sincrolab.application.equilibrium import (
     simulate_smib_equilibrium,
     simulate_smib_free_disturbance,
@@ -19,9 +23,11 @@ from sincrolab.application.equilibrium import (
 __all__ = [
     "SMIBClearingTimeEvaluation",
     "SMIBCriticalClearingTimeResult",
+    "SMIBCriticalClearingCrossCheck",
     "SMIBSimulationResult",
     "SMIBTransientSimulationResult",
     "evaluate_smib_clearing_time",
+    "cross_check_smib_critical_clearing",
     "search_smib_critical_clearing_time",
     "simulate_smib_equilibrium",
     "simulate_smib_free_disturbance",
