@@ -5,14 +5,20 @@ from sincrolab.application.results import (
     SMIBTransientSimulationResult,
 )
 from sincrolab.application.transient import simulate_smib_transient
+from sincrolab.application.clearing_time import (
+    SMIBClearingTimeEvaluation,
+    evaluate_smib_clearing_time,
+)
 from sincrolab.application.equilibrium import (
     simulate_smib_equilibrium,
     simulate_smib_free_disturbance,
 )
 
 __all__ = [
+    "SMIBClearingTimeEvaluation",
     "SMIBSimulationResult",
     "SMIBTransientSimulationResult",
+    "evaluate_smib_clearing_time",
     "simulate_smib_equilibrium",
     "simulate_smib_free_disturbance",
     "simulate_smib_transient",
