@@ -1,42 +1,97 @@
 # SincroLab
 
-SincroLab es un laboratorio educativo, abierto y ligero para estudiar la
-estabilidad transitoria de sistemas eléctricos de potencia. Conecta relaciones
-físicas, integración numérica y evidencia reproducible mediante el modelo
-clásico de una máquina conectada a una barra infinita (SMIB).
+SincroLab es un laboratorio educativo y científico para comprender la
+estabilidad transitoria de sistemas eléctricos de potencia. Su núcleo actual
+usa el modelo clásico de una máquina conectada a una barra infinita (SMIB) para
+relacionar física, integración numérica y evidencia reproducible.
 
-El proyecto está en desarrollo hacia la versión 0.1. El núcleo actual es
-funcional y está cubierto por pruebas; todavía no incluye CLI ni interfaces
-desktop o web.
+El alcance es deliberadamente acotado: no representa una red multimáquina
+general ni sustituye ETAP, PSS/E, PowerWorld, DIgSILENT o un estudio
+operacional. En V0.1, la falla se modela pedagógicamente mediante cambios
+equivalentes de la capacidad de transferencia `Pmax`, no mediante un cálculo
+completo de cortocircuito o de red.
 
 ## Capacidades actuales
 
-- Relación potencia–ángulo `Pe_pu = Pmax_pu * sin(delta_rad)`.
-- Equilibrio principal `asin(Pm_pu / Pmax_prefault_pu)` con validación de
-  dominio.
+- Relación potencia–ángulo `Pe_pu = Pmax_pu * sin(delta_rad)` y equilibrio
+  principal con validación explícita del dominio.
 - Modelo clásico SMIB y swing equation para `delta_rad` y `omega_dev_pu`.
-- Euler explícito y RK4 clásico implementados en el proyecto, con pruebas
-  analíticas y evidencia de sus órdenes de convergencia.
-- Malla temporal determinista con paso final acortado cuando corresponde.
-- Simulación RK4 de la secuencia prefalla, falla y posfalla mediante tres
-  capacidades `Pmax` equivalentes y fronteras de evento exactas.
-- Casos sintéticos reproducibles estable, cercano al límite, inestable y
-  adversarial frente a resolución temporal.
-- Diagnóstico muestreado de primera oscilación con resultados `STABLE`,
-  `UNSTABLE` o `INDETERMINATE` y brackets de la evidencia observada.
+- Euler explícito y RK4 clásico implementados dentro del proyecto, con pruebas
+  analíticas de convergencia y una malla temporal robusta.
+- Simulación prefalla, falla y posfalla con `Pmax` equivalentes, estado continuo
+  y eventos ubicados exactamente en los tiempos especificados.
+- Trayectorias inmutables unidas a su configuración y procedencia para impedir
+  que se analicen accidentalmente con parámetros de otra ejecución.
+- Diagnóstico muestreado de primera oscilación con estados `STABLE`,
+  `UNSTABLE` e `INDETERMINATE` y brackets de la evidencia observada.
+- Equal Area Criterion clásico para casos compatibles sin amortiguamiento, y
+  cálculo analítico del critical clearing angle.
+- Evaluación de un clearing time concreto y búsqueda numérica del Critical
+  Clearing Time (CCT) mediante bisección de un bracket temporal
+  `STABLE -> UNSTABLE`.
+- Cross-check independiente entre el critical clearing angle analítico y los
+  ángulos de clearing de los endpoints temporales finales.
+- Comparación numérica del RK4 propio con `scipy.integrate.solve_ivp` como
+  referencia independiente en tests.
 
 Los ángulos internos se expresan en radianes, el tiempo en segundos y las
-potencias en per unit. La desviación de velocidad es relativa a la velocidad
-síncrona eléctrica. Los integradores numéricos son independientes del dominio
-eléctrico.
+potencias en per unit. La desviación de velocidad se define respecto de la
+velocidad síncrona eléctrica.
+
+## Semántica del CCT
+
+El resultado científico principal de la búsqueda temporal es un endpoint
+estable, un endpoint inestable y el ancho del bracket que los separa. El
+midpoint (`cct_estimate_s`) es solo una estimación dentro de ese intervalo; no
+es un “CCT exacto”.
+
+`time_tolerance_s` limita el ancho máximo aceptado del bracket final. No es una
+cota universal del error físico, una tolerancia del integrador ni evidencia de
+convergencia respecto de `dt_s`.
+
+## Solver educativo y referencia SciPy
+
+El solver educativo principal es el RK4 clásico propio de SincroLab. SciPy
+`solve_ivp` se usa exclusivamente en tests como referencia numérica
+independiente: no sustituye RK4, no forma parte de la ruta principal de
+simulación y no es una dependencia requerida en runtime. La referencia
+transitoria también separa prefalla, falla y posfalla, y transporta estados de
+SciPy a SciPy entre segmentos.
+
+## Arquitectura
+
+```text
+src/sincrolab/
+  models/          física, parámetros y tipos de dominio
+  numerical/       Euler, RK4 y utilidades genéricas
+  simulation/      trayectorias, configuración y procedencia neutrales
+  analysis/        first-swing, Equal Area, critical clearing angle
+                    y análisis científico derivado
+  application/     simulación, evaluación temporal, búsqueda CCT y
+                    cross-checks/orquestación
+tests/              validación analítica, física, numérica y de regresión
+reference_cases/    casos sintéticos reproducibles
+examples/           ejemplos previstos
+web/                interfaz web prevista
+```
+
+La física y los criterios científicos no pertenecen a las interfaces. En
+particular, la búsqueda temporal del CCT es un caso de uso de `application/`;
+el critical clearing angle analítico pertenece a `analysis/`; y
+`simulation/` conserva contratos neutrales, sin convertirse en otra capa de
+orquestación.
 
 ## Instalación para desarrollo
 
-Se requiere Python 3.11 o posterior y [`uv`](https://docs.astral.sh/uv/).
+Se requiere Python 3.11 o posterior y
+[`uv`](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync --locked --dev
 ```
+
+La dependencia de runtime es NumPy. El grupo de desarrollo/pruebas incorpora
+pytest y SciPy.
 
 ## Uso básico
 
@@ -83,54 +138,36 @@ assessment = assess_smib_first_swing(result)
 print(assessment.status.value, assessment.reason.value)
 ```
 
-El resultado transitorio conserva de forma inmutable la trayectoria y la
-configuración que la produjo. El análisis consume ese único resultado para no
-combinar accidentalmente una trayectoria con otros parámetros o red.
-
 ## Pruebas
 
 ```bash
-uv run pytest
+uv run pytest -q
 ```
 
-La suite verifica relaciones físicas conocidas, contratos de entrada/salida,
-Euler y RK4 frente a soluciones analíticas, convergencia, continuidad y
-fronteras de eventos, casos de referencia y diagnóstico de primera oscilación.
-El mismo comando se ejecuta en GitHub Actions.
+La suite cubre relaciones físicas, contratos de los integradores, convergencia,
+eventos exactos, casos de referencia, first-swing, Equal Area, critical
+clearing angle, evaluación/búsqueda temporal, cross-checks y comparación con
+SciPy. El mismo comando se ejecuta en GitHub Actions.
 
-## Estructura
+## Limitaciones actuales
 
-```text
-src/sincrolab/
-  models/          relaciones físicas y tipos de dominio
-  numerical/       Euler, RK4 y malla temporal independientes del dominio
-  simulation/      resultados y procedencia neutrales
-  application/     orquestación de simulaciones SMIB
-  analysis/        diagnóstico muestreado de primera oscilación
-tests/              pruebas unitarias, analíticas y de regresión
-reference_cases/    casos sintéticos reproducibles
-examples/           ejemplos reproducibles previstos
-web/                interfaz web prevista
-```
+- El modelo es el SMIB clásico; no representa dinámica multimáquina ni modelos
+  síncronos de orden alto.
+- La falla es un equivalente mediante `Pmax`, no un cortocircuito general.
+- El diagnóstico first-swing no demuestra estabilidad global, asintótica ni de
+  oscilaciones posteriores.
+- Equal Area y el critical clearing angle requieren hipótesis específicas,
+  entre ellas `D_pu == 0` en la formulación actual.
+- El CCT temporal depende del modelo, la configuración, `dt_s`, el horizonte y
+  el criterio first-swing. La sensibilidad sistemática a `dt_s` corresponde al
+  siguiente hito y aún no está caracterizada.
+- CLI, desktop y web todavía no están terminados.
 
-## Alcance y limitaciones
+## Metodología de desarrollo con IA
 
-SincroLab implementa un SMIB clásico educativo. La falla se representa mediante
-un cambio por tramos de `Pmax`; no es un cálculo general de cortocircuito ni un
-modelo de una red real. El diagnóstico actual clasifica la primera excursión a
-partir de muestras discretas: no demuestra estabilidad global o asintótica y
-puede depender de `dt_s` cerca de la frontera.
-
-Todavía no se implementan criterio de áreas iguales, ángulo crítico, CCT,
-comparación con SciPy, exportación, CLI ni interfaces de usuario. SincroLab no
-sustituye estudios operacionales ni herramientas comerciales.
-
-## Metodología de desarrollo
-
-SincroLab utiliza herramientas de IA como apoyo en implementación,
-refactorización y pruebas. Las decisiones sobre modelos, supuestos y criterios
-científicos, así como la revisión de la corrección matemática, física y
-numérica del núcleo, forman parte del proceso de revisión del autor.
+Herramientas de IA asisten en implementación, refactorización y pruebas. El
+autor define y revisa los modelos, las hipótesis y los criterios, y audita de
+forma consciente la corrección matemática, física y numérica del proyecto.
 
 ## Licencia
 
