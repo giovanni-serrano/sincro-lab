@@ -9,7 +9,10 @@ authors = [{ name = "SincroLab contributors" }]
 dependencies = ['numpy>=1.26,<3']
 
 [dependency-groups]
-dev = ["pytest>=9.0.3,<10.0"]
+dev = [
+    "pytest>=9.0.3,<10.0",
+    "scipy>=1.15,<2",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
