@@ -19,6 +19,17 @@ from sincrolab.application.equilibrium import (
     simulate_smib_equilibrium,
     simulate_smib_free_disturbance,
 )
+from sincrolab.application.learning import (
+    ExplanationEvidence,
+    ExplanationKind,
+    LearningConcept,
+    PedagogicalExplanation,
+    explain_critical_clearing_cross_check,
+    explain_critical_clearing_time,
+    explain_first_swing,
+    explain_time_step_sensitivity,
+    render_explanation_text,
+)
 
 __all__ = [
     "SMIBClearingTimeEvaluation",
@@ -26,8 +37,17 @@ __all__ = [
     "SMIBCriticalClearingCrossCheck",
     "SMIBSimulationResult",
     "SMIBTransientSimulationResult",
+    "ExplanationEvidence",
+    "ExplanationKind",
+    "LearningConcept",
+    "PedagogicalExplanation",
     "evaluate_smib_clearing_time",
     "cross_check_smib_critical_clearing",
+    "explain_critical_clearing_cross_check",
+    "explain_critical_clearing_time",
+    "explain_first_swing",
+    "explain_time_step_sensitivity",
+    "render_explanation_text",
     "search_smib_critical_clearing_time",
     "simulate_smib_equilibrium",
     "simulate_smib_free_disturbance",
