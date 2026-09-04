@@ -2,7 +2,9 @@
 
 from collections.abc import Callable
 from functools import partial
+import json
 from math import exp
+from pathlib import Path
 import sys
 from types import SimpleNamespace
 from typing import Any
@@ -33,6 +35,15 @@ VectorRhs = Callable[[float, NDArray[np.float64]], NDArray[np.float64]]
 SCIPY_METHOD = "DOP853"
 SCIPY_RTOL = 1e-11
 SCIPY_ATOL = 1e-13
+
+GOLDEN_CASE_PATH = (
+    Path(__file__).parents[1]
+    / "reference_cases"
+    / "smib_v0_1_golden_cases.json"
+)
+SCIPY_TRANSIENT_GOLDEN = json.loads(
+    GOLDEN_CASE_PATH.read_text(encoding="utf-8")
+)["cases"]["scipy_cross_checked_transient"]
 
 
 def _solve_scipy_at_times(
@@ -146,21 +157,12 @@ def _scipy_transient_reference(
 
 
 def _smib_parameters() -> SMIBParameters:
-    return SMIBParameters(
-        H_s=3.5,
-        D_pu=0.2,
-        f_base_hz=60.0,
-        Pm_pu=0.7,
-    )
+    return SMIBParameters(**SCIPY_TRANSIENT_GOLDEN["smib_parameters"])
 
 
 def _transient_network() -> SMIBTransientNetwork:
     return SMIBTransientNetwork(
-        Pmax_prefault_pu=1.2,
-        Pmax_fault_pu=0.2,
-        Pmax_postfault_pu=0.9,
-        t_fault_s=0.105,
-        t_clear_s=0.237,
+        **SCIPY_TRANSIENT_GOLDEN["transient_network"]
     )
 
 
@@ -232,13 +234,22 @@ def test_segmented_scipy_reference_agrees_with_transient_rk4() -> None:
     parameters = _smib_parameters()
     network = _transient_network()
     initial_state = _equilibrium_state(parameters, network)
+    simulation = SCIPY_TRANSIENT_GOLDEN["simulation"]
+    expected = SCIPY_TRANSIENT_GOLDEN["expected_observations"]
+    external_reference = SCIPY_TRANSIENT_GOLDEN["external_reference"]
+
+    assert external_reference["solver"] == "scipy.integrate.solve_ivp"
+    assert external_reference["method"] == SCIPY_METHOD
+    assert external_reference["rtol"] == SCIPY_RTOL
+    assert external_reference["atol"] == SCIPY_ATOL
+    assert external_reference["usage"] == "test_only"
     rk4_result = simulate_smib_transient(
         parameters,
         initial_state,
         network,
-        t_start_s=0.0,
-        t_end_s=0.8,
-        dt_s=0.02,
+        t_start_s=simulation["t_start_s"],
+        t_end_s=simulation["t_end_s"],
+        dt_s=simulation["dt_s"],
     )
 
     scipy_time_s, scipy_states = _scipy_transient_reference(
@@ -259,10 +270,18 @@ def test_segmented_scipy_reference_agrees_with_transient_rk4() -> None:
     assert network.t_clear_s / rk4_result.dt_s != round(
         network.t_clear_s / rk4_result.dt_s
     )
-    assert float(np.max(delta_error_rad)) < 2e-6
-    assert float(np.max(omega_error_pu)) < 1e-8
-    assert float(delta_error_rad[-1]) < 2e-6
-    assert float(omega_error_pu[-1]) < 1e-8
+    assert float(np.max(delta_error_rad)) < expected[
+        "max_abs_delta_error_rad"
+    ]["upper_bound_rad"]
+    assert float(np.max(omega_error_pu)) < expected[
+        "max_abs_omega_dev_error_pu"
+    ]["upper_bound_pu"]
+    assert float(delta_error_rad[-1]) < expected[
+        "max_abs_delta_error_rad"
+    ]["upper_bound_rad"]
+    assert float(omega_error_pu[-1]) < expected[
+        "max_abs_omega_dev_error_pu"
+    ]["upper_bound_pu"]
 
 
 def test_scipy_reference_transports_only_scipy_segment_states(
