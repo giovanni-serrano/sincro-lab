@@ -2,7 +2,7 @@
 
 All notable changes to SincroLab are documented in this file.
 
-## [0.1.0-core] - Unreleased
+## [0.1.0-core] - 2026-09-05
 
 ### Added
 

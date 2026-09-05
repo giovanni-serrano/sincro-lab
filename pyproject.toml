@@ -27,3 +27,27 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sincrolab"]
+
+[tool.hatch.build.targets.sdist]
+# Local Git excludes are not a distribution boundary. New package directories
+# or data formats must be deliberately added to this public source allowlist.
+include = [
+    "/pyproject.toml",
+    "/README.md",
+    "/LICENSE",
+    "/CHANGELOG.md",
+    "/CITATION.cff",
+    "/.gitignore",
+    "/uv.lock",
+    "/src/sincrolab/*.py",
+    "/src/sincrolab/analysis/*.py",
+    "/src/sincrolab/application/*.py",
+    "/src/sincrolab/application/_h23_reference_projection.json",
+    "/src/sincrolab/interfaces/*.py",
+    "/src/sincrolab/interfaces/cli/*.py",
+    "/src/sincrolab/models/*.py",
+    "/src/sincrolab/numerical/*.py",
+    "/src/sincrolab/simulation/*.py",
+    "/reference_cases/*.json",
+    "/tests/test_*.py",
+]

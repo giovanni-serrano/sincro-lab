@@ -5,6 +5,8 @@ estabilidad transitoria de sistemas eléctricos de potencia mediante simulación
 evidencia reproducible e interpretación trazable. El core `v0.1.0-core` usa el
 modelo clásico de una máquina conectada a una barra infinita (SMIB).
 
+`0.1.0` es la versión del paquete Python; `v0.1.0-core` es el identificador del release/tag Git del core.
+
 El alcance es deliberadamente acotado. SincroLab no representa una red
 multimáquina general ni sustituye ETAP, PSS/E, PowerWorld, DIgSILENT o un
 estudio operacional. La perturbación V0.1 se modela pedagógicamente mediante
