@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use SincroLab, please cite this software."
+title: "SincroLab"
+type: software
+version: "0.1.0-core"
+authors:
+  - name: "SincroLab contributors"
+repository-code: "https://github.com/giovanni-serrano/sincro-lab"
+license: MIT
+abstract: >-
+  An educational classical-SMIB laboratory for reproducible transient-stability
+  simulation, scientific interpretation, and guided learning.

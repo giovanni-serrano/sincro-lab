@@ -1,0 +1,401 @@
+{
+    "projection_schema_version":  1,
+    "canonical_source":  "reference_cases/smib_v0_1_golden_cases.json",
+    "golden_collection":  {
+                              "schema_version":  1,
+                              "collection_id":  "smib_v0_1_golden_cases",
+                              "metadata":  {
+                                               "provenance":  "synthetic_validated_evidence",
+                                               "purpose":  "Compact scientific regression evidence for the classical SincroLab V0.1 SMIB model.",
+                                               "scope":  "classical_smib_v0.1",
+                                               "represents_specific_real_system":  false,
+                                               "evidence_types":  [
+                                                                      "ANALYTIC_ORACLE",
+                                                                      "EXTERNAL_NUMERICAL_ORACLE",
+                                                                      "CROSS_CHECKED_EVIDENCE",
+                                                                      "ACCEPTED_REGRESSION"
+                                                                  ],
+                                               "tolerance_policy":  "Exact comparisons protect categorical and event-count contracts. Unit-bearing absolute tolerances and upper bounds protect selected scalar scientific observations without representing physical uncertainty. For classic_undamped, cct_search.time_tolerance_s is only H19\u0027s maximum final bracket width, while each expected endpoint abs_tolerance_s is an independent deterministic-regression tolerance; neither is integration error or CCT uncertainty.",
+                                               "limitations":  [
+                                                                   "Expected values apply only to the stated synthetic inputs, model assumptions, numerical configuration, and tolerances.",
+                                                                   "Temporal CCT brackets are resolution-dependent estimates, not exact or universal critical clearing times.",
+                                                                   "First-swing observations classify sampled trajectories and do not establish global or asymptotic stability."
+                                                               ]
+                                           },
+                              "cases":  {
+                                            "stable_transient":  {
+                                                                     "purpose":  "Preserve a clearly stable sampled first swing and exact disturbance events.",
+                                                                     "input_case_file":  "stable_transient_smib.json",
+                                                                     "expected_observations":  {
+                                                                                                   "fault_event_occurrences":  {
+                                                                                                                                   "value":  1,
+                                                                                                                                   "comparison":  "exact",
+                                                                                                                                   "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                                   "provenance":  "Exact event-boundary contract validated in H12 and H13."
+                                                                                                                               },
+                                                                                                   "clearing_event_occurrences":  {
+                                                                                                                                      "value":  1,
+                                                                                                                                      "comparison":  "exact",
+                                                                                                                                      "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                                      "provenance":  "Exact event-boundary contract validated in H12 and H13."
+                                                                                                                                  },
+                                                                                                   "fault_initial_acceleration_pu_per_s":  {
+                                                                                                                                               "value":  0.08333333333333333,
+                                                                                                                                               "abs_tolerance_pu_per_s":  1E-12,
+                                                                                                                                               "evidence_type":  "ANALYTIC_ORACLE",
+                                                                                                                                               "provenance":  "Swing equation evaluated at prefault equilibrium with the stated fault transfer capability."
+                                                                                                                                           },
+                                                                                                   "delta_rad_at_clearing":  {
+                                                                                                                                 "value":  0.7786426905151524,
+                                                                                                                                 "abs_tolerance_rad":  1E-09,
+                                                                                                                                 "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                                 "provenance":  "H13/H15 accepted RK4 behavior at dt_s=0.005 s."
+                                                                                                                             },
+                                                                                                   "omega_dev_pu_at_clearing":  {
+                                                                                                                                    "value":  0.008204891890316821,
+                                                                                                                                    "abs_tolerance_pu":  1E-11,
+                                                                                                                                    "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                                    "provenance":  "H13/H15 accepted RK4 behavior at dt_s=0.005 s."
+                                                                                                                                },
+                                                                                                   "first_swing_status":  {
+                                                                                                                              "value":  "STABLE",
+                                                                                                                              "comparison":  "exact",
+                                                                                                                              "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                              "provenance":  "H15 sampled first-swing assessment for the stable public input case."
+                                                                                                                          },
+                                                                                                   "first_swing_reason":  {
+                                                                                                                              "value":  "REVERSAL_BEFORE_CROSSING",
+                                                                                                                              "comparison":  "exact",
+                                                                                                                              "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                              "provenance":  "H15 sampled event ordering for the stable public input case."
+                                                                                                                          }
+                                                                                               },
+                                                                     "limitations":  "Clearing state and classification are tied to the input file\u0027s dt_s and horizon; they are not analytic stability oracles."
+                                                                 },
+                                            "unstable_transient":  {
+                                                                       "purpose":  "Preserve a clearly unstable sampled first swing with positive speed through the crossing bracket.",
+                                                                       "input_case_file":  "unstable_transient_smib.json",
+                                                                       "expected_observations":  {
+                                                                                                     "fault_event_occurrences":  {
+                                                                                                                                     "value":  1,
+                                                                                                                                     "comparison":  "exact",
+                                                                                                                                     "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                                     "provenance":  "Exact event-boundary contract validated in H12 and H14."
+                                                                                                                                 },
+                                                                                                     "clearing_event_occurrences":  {
+                                                                                                                                        "value":  1,
+                                                                                                                                        "comparison":  "exact",
+                                                                                                                                        "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                                        "provenance":  "Exact event-boundary contract validated in H12 and H14."
+                                                                                                                                    },
+                                                                                                     "fault_initial_acceleration_pu_per_s":  {
+                                                                                                                                                 "value":  0.08333333333333333,
+                                                                                                                                                 "abs_tolerance_pu_per_s":  1E-12,
+                                                                                                                                                 "evidence_type":  "ANALYTIC_ORACLE",
+                                                                                                                                                 "provenance":  "Swing equation evaluated at prefault equilibrium with the stated fault transfer capability."
+                                                                                                                                             },
+                                                                                                     "delta_rad_at_clearing":  {
+                                                                                                                                   "value":  1.5656262610130298,
+                                                                                                                                   "abs_tolerance_rad":  1E-09,
+                                                                                                                                   "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                                   "provenance":  "H14/H15 accepted RK4 behavior at dt_s=0.005 s."
+                                                                                                                               },
+                                                                                                     "omega_dev_pu_at_clearing":  {
+                                                                                                                                      "value":  0.019389697517699183,
+                                                                                                                                      "abs_tolerance_pu":  1E-11,
+                                                                                                                                      "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                                      "provenance":  "H14/H15 accepted RK4 behavior at dt_s=0.005 s."
+                                                                                                                                  },
+                                                                                                     "first_swing_status":  {
+                                                                                                                                "value":  "UNSTABLE",
+                                                                                                                                "comparison":  "exact",
+                                                                                                                                "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                                "provenance":  "H15 sampled first-swing assessment for the unstable public input case."
+                                                                                                                            },
+                                                                                                     "first_swing_reason":  {
+                                                                                                                                "value":  "CROSSING_BEFORE_REVERSAL",
+                                                                                                                                "comparison":  "exact",
+                                                                                                                                "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                                "provenance":  "H15 sampled event ordering for the unstable public input case."
+                                                                                                                            },
+                                                                                                     "crossing_bracket_speed_sign":  {
+                                                                                                                                         "value":  "POSITIVE_AT_BOTH_SAMPLES",
+                                                                                                                                         "comparison":  "exact",
+                                                                                                                                         "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                                         "provenance":  "H14/H15 crossing evidence required by the sampled unstable classification."
+                                                                                                                                     }
+                                                                                                 },
+                                                                       "limitations":  "The positive-speed crossing supports this sampled first-swing result only; it is not a general network-stability claim."
+                                                                   },
+                                            "adversarial_time_step":  {
+                                                                          "purpose":  "Preserve the accepted first-swing sensitivity to coarse temporal resolution.",
+                                                                          "input_case_file":  "near_critical_adversarial.json",
+                                                                          "expected_observations":  {
+                                                                                                        "classifications_by_dt_s":  [
+                                                                                                                                        {
+                                                                                                                                            "dt_s":  0.2,
+                                                                                                                                            "status":  "UNSTABLE",
+                                                                                                                                            "comparison":  "exact",
+                                                                                                                                            "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                                            "provenance":  "H15.5 and H22 accepted coarse sampled-trajectory behavior."
+                                                                                                                                        },
+                                                                                                                                        {
+                                                                                                                                            "dt_s":  0.1,
+                                                                                                                                            "status":  "STABLE",
+                                                                                                                                            "comparison":  "exact",
+                                                                                                                                            "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                                            "provenance":  "H15.5 and H22 accepted refined sampled-trajectory behavior."
+                                                                                                                                        },
+                                                                                                                                        {
+                                                                                                                                            "dt_s":  0.05,
+                                                                                                                                            "status":  "STABLE",
+                                                                                                                                            "comparison":  "exact",
+                                                                                                                                            "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                                            "provenance":  "H15.5 and H22 accepted refined sampled-trajectory behavior."
+                                                                                                                                        },
+                                                                                                                                        {
+                                                                                                                                            "dt_s":  0.025,
+                                                                                                                                            "status":  "STABLE",
+                                                                                                                                            "comparison":  "exact",
+                                                                                                                                            "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                                            "provenance":  "H22 accepted refined sampled-trajectory behavior."
+                                                                                                                                        }
+                                                                                                                                    ]
+                                                                                                    },
+                                                                          "limitations":  "The classification change documents trajectory-resolution sensitivity; it is not labeled as a classifier defect or an exact CCT result."
+                                                                      },
+                                            "classic_undamped":  {
+                                                                     "purpose":  "Preserve analytic equal-area angles and their independent temporal cross-check under zero damping.",
+                                                                     "smib_parameters":  {
+                                                                                             "H_s":  3.5,
+                                                                                             "D_pu":  0.0,
+                                                                                             "f_base_hz":  60.0,
+                                                                                             "Pm_pu":  0.7
+                                                                                         },
+                                                                     "transient_network":  {
+                                                                                               "Pmax_prefault_pu":  1.2,
+                                                                                               "Pmax_fault_pu":  0.2,
+                                                                                               "Pmax_postfault_pu":  1.1,
+                                                                                               "t_fault_s":  0.1,
+                                                                                               "t_clear_s":  0.2
+                                                                                           },
+                                                                     "initial_state":  {
+                                                                                           "delta_rad_source":  "prefault_equilibrium",
+                                                                                           "omega_dev_pu":  0.0
+                                                                                       },
+                                                                     "cct_search":  {
+                                                                                        "stable_t_clear_s":  0.2,
+                                                                                        "unstable_t_clear_s":  0.35,
+                                                                                        "t_start_s":  0.0,
+                                                                                        "t_end_s":  5.0,
+                                                                                        "dt_s":  0.005,
+                                                                                        "time_tolerance_s":  0.0001,
+                                                                                        "angle_tolerance_rad":  0.0,
+                                                                                        "max_iterations":  64,
+                                                                                        "tolerance_interpretation":  "time_tolerance_s limits only the bisection bracket width; it is not an integration-error estimate."
+                                                                                    },
+                                                                     "expected_observations":  {
+                                                                                                   "delta_initial_rad":  {
+                                                                                                                             "value":  0.622826585412003,
+                                                                                                                             "abs_tolerance_rad":  1E-12,
+                                                                                                                             "evidence_type":  "ANALYTIC_ORACLE",
+                                                                                                                             "provenance":  "Closed-form asin(Pm_pu/Pmax_prefault_pu) validated in H02 and H16."
+                                                                                                                         },
+                                                                                                   "delta_stable_post_rad":  {
+                                                                                                                                 "value":  0.6897750007854995,
+                                                                                                                                 "abs_tolerance_rad":  1E-12,
+                                                                                                                                 "evidence_type":  "ANALYTIC_ORACLE",
+                                                                                                                                 "provenance":  "Closed-form asin(Pm_pu/Pmax_postfault_pu) validated in H16/H17."
+                                                                                                                             },
+                                                                                                   "delta_unstable_post_rad":  {
+                                                                                                                                   "value":  2.4518176528042934,
+                                                                                                                                   "abs_tolerance_rad":  1E-12,
+                                                                                                                                   "evidence_type":  "ANALYTIC_ORACLE",
+                                                                                                                                   "provenance":  "Closed-form pi-delta_stable_post_rad validated in H16/H17."
+                                                                                                                               },
+                                                                                                   "delta_critical_rad":  {
+                                                                                                                              "value":  1.2668967326699028,
+                                                                                                                              "abs_tolerance_rad":  1E-12,
+                                                                                                                              "evidence_type":  "ANALYTIC_ORACLE",
+                                                                                                                              "provenance":  "Closed-form equal-area critical angle independently derived and validated in H17."
+                                                                                                                          },
+                                                                                                   "stable_t_clear_s":  {
+                                                                                                                            "value":  0.30524902343749993,
+                                                                                                                            "abs_tolerance_s":  1E-12,
+                                                                                                                            "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                            "provenance":  "Accepted deterministic H19 numerical regression at dt_s=0.005 s; H20 cross-checked its clearing angle against the independent analytic H17 critical angle, but the temporal value is not an independent oracle."
+                                                                                                                        },
+                                                                                                   "unstable_t_clear_s":  {
+                                                                                                                              "value":  0.305322265625,
+                                                                                                                              "abs_tolerance_s":  1E-12,
+                                                                                                                              "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                              "provenance":  "Accepted deterministic H19 numerical regression at dt_s=0.005 s; H20 cross-checked its clearing angle against the independent analytic H17 critical angle, but the temporal value is not an independent oracle."
+                                                                                                                          },
+                                                                                                   "stable_clearing_angle_rad":  {
+                                                                                                                                     "value":  1.2666194202127534,
+                                                                                                                                     "abs_tolerance_rad":  1E-09,
+                                                                                                                                     "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                                     "provenance":  "Accepted numerical angle from the stable H19 endpoint trajectory; H20 cross-checked it against the independent analytic H17 critical angle, but this value is not an independent oracle."
+                                                                                                                                 },
+                                                                                                   "unstable_clearing_angle_rad":  {
+                                                                                                                                       "value":  1.2670679820430204,
+                                                                                                                                       "abs_tolerance_rad":  1E-09,
+                                                                                                                                       "evidence_type":  "ACCEPTED_REGRESSION",
+                                                                                                                                       "provenance":  "Accepted numerical angle from the unstable H19 endpoint trajectory; H20 cross-checked it against the independent analytic H17 critical angle, but this value is not an independent oracle."
+                                                                                                                                   },
+                                                                                                   "critical_angle_within_temporal_angle_bracket":  {
+                                                                                                                                                        "value":  true,
+                                                                                                                                                        "comparison":  "exact",
+                                                                                                                                                        "evidence_type":  "CROSS_CHECKED_EVIDENCE",
+                                                                                                                                                        "provenance":  "Independent analytic/temporal consistency established in H20."
+                                                                                                                                                    }
+                                                                                               },
+                                                                     "limitations":  "Equal Area requires D_pu=0 and the documented classical forward first-swing assumptions. The temporal bracket remains tied to dt_s; time_tolerance_s controls H19 stopping, while endpoint abs_tolerance_s controls only golden regression comparison. Neither tolerance is physical uncertainty or actual CCT error."
+                                                                 },
+                                            "scipy_cross_checked_transient":  {
+                                                                                  "purpose":  "Preserve externally cross-checked error bounds without making SciPy a runtime dependency.",
+                                                                                  "smib_parameters":  {
+                                                                                                          "H_s":  3.5,
+                                                                                                          "D_pu":  0.2,
+                                                                                                          "f_base_hz":  60.0,
+                                                                                                          "Pm_pu":  0.7
+                                                                                                      },
+                                                                                  "transient_network":  {
+                                                                                                            "Pmax_prefault_pu":  1.2,
+                                                                                                            "Pmax_fault_pu":  0.2,
+                                                                                                            "Pmax_postfault_pu":  0.9,
+                                                                                                            "t_fault_s":  0.105,
+                                                                                                            "t_clear_s":  0.237
+                                                                                                        },
+                                                                                  "initial_state":  {
+                                                                                                        "delta_rad_source":  "prefault_equilibrium",
+                                                                                                        "omega_dev_pu":  0.0
+                                                                                                    },
+                                                                                  "simulation":  {
+                                                                                                     "t_start_s":  0.0,
+                                                                                                     "t_end_s":  0.8,
+                                                                                                     "dt_s":  0.02
+                                                                                                 },
+                                                                                  "external_reference":  {
+                                                                                                             "solver":  "scipy.integrate.solve_ivp",
+                                                                                                             "method":  "DOP853",
+                                                                                                             "rtol":  1E-11,
+                                                                                                             "atol":  1E-13,
+                                                                                                             "usage":  "test_only"
+                                                                                                         },
+                                                                                  "expected_observations":  {
+                                                                                                                "max_abs_delta_error_rad":  {
+                                                                                                                                                "upper_bound_rad":  2E-06,
+                                                                                                                                                "comparison":  "less_than",
+                                                                                                                                                "evidence_type":  "EXTERNAL_NUMERICAL_ORACLE",
+                                                                                                                                                "provenance":  "External numerical solve_ivp oracle validated in H21 using the same SincroLab SMIB RHS; it cross-checks RK4 integration and segmented event handling, not the physical equations independently."
+                                                                                                                                            },
+                                                                                                                "max_abs_omega_dev_error_pu":  {
+                                                                                                                                                   "upper_bound_pu":  1E-08,
+                                                                                                                                                   "comparison":  "less_than",
+                                                                                                                                                   "evidence_type":  "EXTERNAL_NUMERICAL_ORACLE",
+                                                                                                                                                   "provenance":  "External numerical solve_ivp oracle validated in H21 using the same SincroLab SMIB RHS; it cross-checks RK4 integration and segmented event handling, not the physical equations independently."
+                                                                                                                                               }
+                                                                                                            },
+                                                                                  "limitations":  "These are regression bounds for one numerical configuration, not physical uncertainty or universal solver accuracy. SciPy and RK4 share SincroLab\u0027s SMIB RHS, so this evidence is numerically external but does not independently validate the model equations."
+                                                                              }
+                                        }
+                          },
+    "input_cases":  {
+                        "stable_transient_smib.json":  {
+                                                           "schema_version":  1,
+                                                           "case_id":  "stable_transient_smib",
+                                                           "metadata":  {
+                                                                            "provenance":  "synthetic",
+                                                                            "purpose":  "Stable first-swing regression and educational reference for SincroLab.",
+                                                                            "represents_specific_real_system":  false
+                                                                        },
+                                                           "smib_parameters":  {
+                                                                                   "H_s":  3.5,
+                                                                                   "D_pu":  0.2,
+                                                                                   "f_base_hz":  60.0,
+                                                                                   "Pm_pu":  0.7
+                                                                               },
+                                                           "transient_network":  {
+                                                                                     "Pmax_prefault_pu":  1.2,
+                                                                                     "Pmax_fault_pu":  0.2,
+                                                                                     "Pmax_postfault_pu":  1.1,
+                                                                                     "t_fault_s":  0.1,
+                                                                                     "t_clear_s":  0.2
+                                                                                 },
+                                                           "initial_state":  {
+                                                                                 "delta_rad_source":  "prefault_equilibrium",
+                                                                                 "omega_dev_pu":  0.0
+                                                                             },
+                                                           "simulation":  {
+                                                                              "t_start_s":  0.0,
+                                                                              "t_end_s":  5.0,
+                                                                              "dt_s":  0.005
+                                                                          }
+                                                       },
+                        "unstable_transient_smib.json":  {
+                                                             "schema_version":  1,
+                                                             "case_id":  "unstable_transient_smib",
+                                                             "metadata":  {
+                                                                              "provenance":  "synthetic",
+                                                                              "purpose":  "Unstable first-swing regression and educational reference within the controlled SincroLab family.",
+                                                                              "represents_specific_real_system":  false
+                                                                          },
+                                                             "smib_parameters":  {
+                                                                                     "H_s":  3.5,
+                                                                                     "D_pu":  0.2,
+                                                                                     "f_base_hz":  60.0,
+                                                                                     "Pm_pu":  0.7
+                                                                                 },
+                                                             "transient_network":  {
+                                                                                       "Pmax_prefault_pu":  1.2,
+                                                                                       "Pmax_fault_pu":  0.2,
+                                                                                       "Pmax_postfault_pu":  1.1,
+                                                                                       "t_fault_s":  0.1,
+                                                                                       "t_clear_s":  0.35
+                                                                                   },
+                                                             "initial_state":  {
+                                                                                   "delta_rad_source":  "prefault_equilibrium",
+                                                                                   "omega_dev_pu":  0.0
+                                                                               },
+                                                             "simulation":  {
+                                                                                "t_start_s":  0.0,
+                                                                                "t_end_s":  5.0,
+                                                                                "dt_s":  0.005
+                                                                            }
+                                                         },
+                        "near_critical_adversarial.json":  {
+                                                               "schema_version":  1,
+                                                               "case_id":  "near_critical_adversarial",
+                                                               "metadata":  {
+                                                                                "provenance":  "synthetic",
+                                                                                "purpose":  "Adversarial regression near the sampled first-swing boundary for SincroLab.",
+                                                                                "adversarial_characteristic":  "The sampled assessment is STABLE at the tested dt_s values up to 0.1 and UNSTABLE at dt_s = 0.2 for the same model inputs.",
+                                                                                "limitation":  "This case exposes time-step sensitivity; it is not a CCT result or a claim that either coarse trajectory is numerically converged.",
+                                                                                "represents_specific_real_system":  false
+                                                                            },
+                                                               "smib_parameters":  {
+                                                                                       "H_s":  3.5,
+                                                                                       "D_pu":  0.2,
+                                                                                       "f_base_hz":  60.0,
+                                                                                       "Pm_pu":  0.7
+                                                                                   },
+                                                               "transient_network":  {
+                                                                                         "Pmax_prefault_pu":  1.2,
+                                                                                         "Pmax_fault_pu":  0.2,
+                                                                                         "Pmax_postfault_pu":  1.1,
+                                                                                         "t_fault_s":  0.1,
+                                                                                         "t_clear_s":  0.3045
+                                                                                     },
+                                                               "initial_state":  {
+                                                                                     "delta_rad_source":  "prefault_equilibrium",
+                                                                                     "omega_dev_pu":  0.0
+                                                                                 },
+                                                               "simulation":  {
+                                                                                  "t_start_s":  0.0,
+                                                                                  "t_end_s":  5.0,
+                                                                                  "dt_s":  0.005
+                                                                              }
+                                                           }
+                    }
+}
