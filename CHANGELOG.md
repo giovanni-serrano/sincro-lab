@@ -2,6 +2,19 @@
 
 All notable changes to SincroLab are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Optional educational Qt desktop consuming the existing portable API through
+  a single adapter, with real guided-case metadata and prediction-first runs.
+- Restricted intervention editors, retained baseline/attempt comparisons,
+  sampled angle/speed plots, progressive hints and one possible solution.
+- Deterministic H24 explanations, unchanged H19 bracket semantics, in-memory
+  attempt history and optional complete pre/post assessment through H25.
+- Free-mode transient evaluation with explicit inertia, clearing time, horizon
+  and time step; background execution and visible input/domain errors.
+
 ## [0.1.0-core] - 2026-09-05
 
 ### Added

@@ -13,7 +13,8 @@ DESKTOP = ROOT / "src/sincrolab/interfaces/desktop"
 
 
 def test_desktop_imports_only_presentation_qt_and_small_stdlib_surface():
-    allowed = {"sys", "dataclasses", "PySide6.QtCore", "PySide6.QtWidgets"}
+    allowed = {"sys", "__future__", "dataclasses", "collections.abc", "functools",
+               "math", "PySide6.QtCore", "PySide6.QtWidgets", "PySide6.QtGui"}
     for path in DESKTOP.glob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
@@ -25,6 +26,9 @@ def test_desktop_imports_only_presentation_qt_and_small_stdlib_surface():
             else:
                 continue
             for module in modules:
+                if module == "sincrolab.application.portable":
+                    assert path.name == "adapter.py", path
+                    continue
                 assert module in allowed or module.startswith(
                     "sincrolab.interfaces.desktop."
                 ), (path, module)
@@ -44,13 +48,15 @@ def test_desktop_extra_preserves_numpy_only_base_runtime():
 
 def test_preview_contract_contains_only_editorial_metadata():
     from dataclasses import fields
-    from sincrolab.interfaces.desktop.presentation import CASE_PREVIEWS, CasePreview
+    from sincrolab.interfaces.desktop.presentation import CasePreview
+    from sincrolab.interfaces.desktop.adapter import DesktopController
+    previews = DesktopController().catalog
 
     assert {field.name for field in fields(CasePreview)} == {
         "case_id", "title", "concept", "objective", "difficulty",
     }
-    assert len({item.case_id for item in CASE_PREVIEWS}) == len(CASE_PREVIEWS)
-    for preview in CASE_PREVIEWS:
+    assert len({item.case_id for item in previews}) == len(previews)
+    for preview in previews:
         assert all(isinstance(getattr(preview, field.name), str)
                    and getattr(preview, field.name).strip() for field in fields(preview))
 
@@ -80,7 +86,7 @@ def test_core_cli_and_desktop_error_without_qt():
     assert "Traceback" not in completed.stderr
 
 
-def test_constructing_and_navigating_desktop_never_loads_scientific_modules():
+def test_visual_modules_and_injected_navigation_do_not_load_science():
     script = textwrap.dedent("""
         import importlib.abc
         import importlib.util
@@ -99,13 +105,18 @@ def test_constructing_and_navigating_desktop_never_loads_scientific_modules():
         from PySide6.QtWidgets import QApplication
         from sincrolab.interfaces.desktop.window import MainWindow
         app = QApplication([])
-        window = MainWindow()
+        from sincrolab.interfaces.desktop.presentation import InputField
+        class MetadataOnlyController:
+            catalog = ()
+            def free_fields(self):
+                return (InputField('H_s', 'H', 1.0, 's'),)
+            def free_configuration(self):
+                return (('H_s', '1'),)
+        window = MainWindow(MetadataOnlyController())
         window.show()
         for destination in ('home', 'cases', 'free'):
             window.navigate(destination)
             app.processEvents()
-        window.home.cards[0].open_button.click()
-        assert window.stack.currentWidget() is window.detail
         assert not any(name == root or name.startswith(root + '.')
                        for name in sys.modules for root in forbidden)
         window.close()
@@ -129,8 +140,10 @@ def test_module_entry_point_runs_event_loop_and_exits_cleanly():
         from PySide6.QtWidgets import QApplication
         original_exec = QApplication.exec
         def bounded_exec(self):
-            assert len(self.topLevelWidgets()) == 1
-            window = self.topLevelWidgets()[0]
+            from PySide6.QtWidgets import QMainWindow
+            windows = [w for w in self.topLevelWidgets() if isinstance(w, QMainWindow)]
+            assert len(windows) == 1
+            window = windows[0]
             assert window.isVisible()
             QTimer.singleShot(0, window.close)
             return original_exec()
@@ -144,3 +157,23 @@ def test_module_entry_point_runs_event_loop_and_exits_cleanly():
         import pytest
         pytest.skip("Install the desktop extra to exercise the event loop")
     assert completed.returncode == 0, completed.stderr
+
+
+def test_desktop_contains_no_scientific_routines_or_equation_calls():
+    forbidden = {
+        "sin", "cos", "asin", "acos", "solve_ivp", "explicit_euler", "classical_rk4",
+        "smib_swing_rhs", "assess_first_swing", "assess_equal_area",
+        "evaluate_smib_clearing_time", "search_smib_critical_clearing_time",
+        "prepare_guided_attempt", "score_concept_answers",
+    }
+    for path in DESKTOP.glob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                assert node.name not in forbidden, (path, node.name)
+            if isinstance(node, ast.Call):
+                name = getattr(node.func, "id", getattr(node.func, "attr", ""))
+                assert name not in forbidden, (path, name)
+            if isinstance(node, ast.ImportFrom) and node.module == "math":
+                assert path.name == "adapter.py"
+                assert {item.name for item in node.names} == {"isfinite"}

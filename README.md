@@ -48,7 +48,7 @@ respecto de la velocidad síncrona eléctrica.
 ## Un core, varias interfaces
 
 ```text
-CLI H26 / Desktop conectado H28 (previsto) / Web H29 (prevista)
+CLI H26 / Desktop educativo H28 / Web H29 (prevista)
                     |
                     v
        sincrolab.application.portable
@@ -59,9 +59,8 @@ CLI H26 / Desktop conectado H28 (previsto) / Web H29 (prevista)
 
 La fachada portable no contiene swing equation, integradores ni clasificación.
 Convierte DTOs explícitos hacia los casos de uso existentes y transforma sus
-resultados a tipos serializables. La CLI consume esa fachada; las interfaces
-desktop y web usarán el mismo contrato en H28 y H29. H27 incorpora un shell
-desktop independiente, sin conexión a esa fachada.
+resultados a tipos serializables. La CLI y el desktop H28 consumen esa fachada.
+La interfaz web prevista en H29 reutilizará el mismo contrato.
 
 La API portable se publica desde `sincrolab.application` y se define en
 `sincrolab.application.portable`. Sus operaciones principales son:
@@ -113,13 +112,41 @@ uv sync --locked --dev
 NumPy es la única dependencia científica de runtime. Pytest y SciPy pertenecen
 al grupo de desarrollo; SciPy no forma parte de la ruta del producto.
 
-## Desktop: shell H27
+## Desktop educativo H28
 
-H27 incorpora un shell desktop con PySide6 y Qt Widgets: Inicio, navegador de
-casos guiados, detalles de cada ficha y acceso al Modo libre. Las fichas muestran
-concepto, objetivo y dificultad; son metadatos de presentación sin resultados,
-configuraciones científicas ni soluciones. El desktop todavía no simula ni
-implementa el ciclo educativo; la conexión a la API portable corresponde a H28.
+H27 incorpora un shell desktop; H28 lo conecta a la API portable mediante un
+único adaptador. Inicio y Casos guiados obtienen título, objetivo, dificultad y
+opciones del catálogo H25/H26, sin mantener una segunda definición de los casos.
+
+El recorrido ofrece observar, predecir, simular, intervenir, comparar y explicar.
+Selecciona una predicción antes de ejecutar el baseline; después cambia únicamente
+los parámetros permitidos y predice el nuevo intento. Las pistas se revelan en
+orden. **Mostrar una solución** carga una posibilidad pedagógica y conserva su
+explicación y limitación originales; exige otra predicción antes de simular.
+
+La comparación conserva los resultados y cambios estructurados del workflow,
+con gráficas de las muestras de `delta_rad` y `omega_dev_pu`. Los estados
+`STABLE`, `UNSTABLE` e `INDETERMINATE` y sus razones proceden del núcleo;
+las mayúsculas del indicador son solo formato visual. Las explicaciones H24
+y el bracket H19 se muestran sin reinterpretación. El texto científico conserva
+el idioma original del núcleo.
+
+La autoevaluación pre/post es opcional. Sin respuestas completas no se asigna
+puntuación. Como H26 recibe ambos conjuntos juntos, el desktop conserva las
+respuestas pre antes de simular y repite exactamente la solicitud al recibir
+el post; H25 calcula el score y se sustituye el registro de ese intento.
+El historial vive solo en memoria: volver al catálogo permite retomar el caso
+activo; seleccionar otro caso o cerrar descarta esa sesión. No hay telemetría,
+archivos de progreso, identificadores personales ni marcas de tiempo.
+
+Modo libre usa `evaluate_transient` con `H_s`, `t_clear_s`, `t_end_s` y
+`dt_s` explícitos. Parte del primer caso público del catálogo y muestra los
+demás parámetros retenidos, incluida la condición inicial. La validación
+científica permanece en portable. La ejecución ocurre fuera del hilo Qt;
+una operación activa debe finalizar antes de cerrar la ventana.
+
+H26 expone trayectorias de ángulo y velocidad; esta vista no reconstruye
+`Pe/Pm` ni añade un cálculo Equal Area. No ofrece un editor general de modelos.
 La web todavía no está implementada.
 
 PySide6 es una dependencia opcional del extra `desktop`; la instalación base y
@@ -140,7 +167,7 @@ resueltas. Las pantallas no realizan llamadas de red ni guardan datos.
 Para ejecutar las pruebas desktop (Qt offscreen, sin escritorio visible):
 
 ```bash
-uv run --extra desktop pytest -q tests/test_desktop.py tests/test_desktop_boundary.py
+uv run --extra desktop pytest -q tests/test_desktop.py tests/test_desktop_boundary.py tests/test_desktop_learning.py tests/test_desktop_workflow.py
 ```
 
 Las pruebas de Qt se omiten cuando el extra no está instalado; los checks de
@@ -241,7 +268,7 @@ src/sincrolab/
   analysis/        first-swing, Equal Area y critical clearing angle
   application/     orquestación, aprendizaje y fachada portable
   interfaces/cli/  adaptación textual; sin solver ni clasificador propios
-  interfaces/desktop/  shell opcional Qt; presentación y navegación sin ciencia
+  interfaces/desktop/  Qt opcional; vistas, controlador y adaptador portable
 tests/              validación analítica, física, numérica y de contratos
 reference_cases/    inputs sintéticos y evidencia golden reproducible
 ```
@@ -277,8 +304,8 @@ permitidas.
   de `dt_s` por sí solo.
 - Los casos y soluciones guiadas son educativos y sintéticos; no son
   recomendaciones operacionales para una red real.
-- H27 ofrece navegación desktop; la simulación educativa en desktop queda
-  pendiente de H28 y la superficie web de H29.
+- H28 conecta la simulación educativa desktop al core existente; la superficie
+  web permanece pendiente de H29.
 
 ## Licencia y citación
 

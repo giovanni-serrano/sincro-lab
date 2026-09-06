@@ -48,4 +48,15 @@ QPushButton[role="nav"]:checked { background: %(tint)s; color: %(ocean_hover)s; 
 QPushButton[role="nav"]:hover { background: %(tint)s; }
 QPushButton[role="nav"]:focus { border-color: %(ocean)s; }
 QScrollArea { border: none; }
+QLineEdit, QComboBox, QPlainTextEdit {
+    background: %(white)s; border: 1px solid %(border)s; border-radius: 4px;
+    padding: 7px; selection-background-color: %(ocean)s;
+}
+QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus { border-color: %(ocean)s; }
+QPushButton:checked { background: %(tint)s; border-color: %(ocean)s; }
+QPushButton:disabled { color: %(muted)s; background: %(surface)s; border-color: %(border)s; }
+QLabel[role="error"] { color: #8A321F; background: #FFF1EA; padding: 10px; }
+QTableWidget { background: %(white)s; border: 1px solid %(border)s; gridline-color: %(border)s; }
+QHeaderView::section { background: %(surface)s; border: none; padding: 6px; }
+
 """ % COLORS

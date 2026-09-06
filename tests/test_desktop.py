@@ -12,7 +12,6 @@ from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QLabel
 
-from sincrolab.interfaces.desktop.presentation import CASE_PREVIEWS
 from sincrolab.interfaces.desktop.window import MainWindow
 
 
@@ -71,15 +70,15 @@ def test_home_and_free_mode_actions_navigate(window, app):
 @pytest.mark.parametrize("source", ["home", "cases"])
 def test_each_card_opens_its_own_detail_and_returns_to_browser(window, app, source):
     catalog = window.pages[source]
-    assert len(catalog.cards) == len(CASE_PREVIEWS) == 3
-    for card, preview in zip(catalog.cards, CASE_PREVIEWS, strict=True):
+    assert len(catalog.cards) == len(window.controller.catalog) == 3
+    for card, preview in zip(catalog.cards, window.controller.catalog, strict=True):
         window.navigate(source)
         texts = {item.text() for item in card.findChildren(QLabel)}
         assert {preview.title, preview.concept, preview.objective, preview.difficulty} <= texts
         card.open_button.click()
         app.processEvents()
         assert window.stack.currentWidget() is window.detail
-        assert window.detail.preview is preview
+        assert window.detail.preview == preview
         assert window.detail.title.text() == preview.title
         assert window.detail.objective.text() == preview.objective
         assert window.detail.difficulty.text() == preview.difficulty
@@ -89,8 +88,8 @@ def test_each_card_opens_its_own_detail_and_returns_to_browser(window, app, sour
 
 
 def test_unknown_case_does_not_change_navigation(window):
-    with pytest.raises(ValueError, match="Unknown case preview"):
-        window.open_case("missing")
+    window.open_case("missing")
+    assert isinstance(window.last_error, ValueError)
     assert window.stack.currentWidget() is window.home
 
 
