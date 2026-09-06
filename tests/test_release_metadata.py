@@ -28,7 +28,8 @@ def test_readme_documents_portable_core_and_scientific_limits() -> None:
         "all_reported_observations_match_expected",
         "proyección empaquetada completa",
         "no es un cálculo completo de cortocircuito",
-        "no incluye todavía GUI desktop ni web",
+        "H27 incorpora un shell desktop",
+        "La web todavía no está implementada",
     ):
         assert required in readme
     assert "CCT exacto universal" not in readme
@@ -187,6 +188,8 @@ def test_sdist_build_keeps_public_sources_and_rejects_local_files(tmp_path: Path
         "local-script.py",
         "src/sincrolab/local-environment/private_module.py",
         "src/sincrolab/application/private-notes.txt",
+        "src/sincrolab/interfaces/desktop/private-notes.txt",
+        "src/sincrolab/interfaces/desktop/local-environment/private_module.py",
         "reference_cases/local-backup.json.bak",
         "tests/local-output.json",
     )
@@ -224,6 +227,12 @@ def test_sdist_build_keeps_public_sources_and_rejects_local_files(tmp_path: Path
         "tests/test_golden_cases.py",
         "tests/test_release_metadata.py",
     } <= contents.keys()
+    desktop_sources = {
+        path.relative_to(ROOT).as_posix()
+        for path in (ROOT / "src/sincrolab/interfaces/desktop").glob("*.py")
+    }
+    assert desktop_sources
+    assert desktop_sources <= contents.keys()
     assert set(local_paths).isdisjoint(contents)
     assert all(marker.encode() not in content for content in contents.values())
     assert not any(

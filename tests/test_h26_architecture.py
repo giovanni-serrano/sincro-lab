@@ -19,7 +19,7 @@ def _imports(path: Path) -> set[str]:
     return result
 
 
-def test_runtime_has_no_scipy_or_ui_network_dependencies() -> None:
+def test_core_has_no_ui_and_runtime_has_no_scipy_or_network_dependencies() -> None:
     forbidden_roots = {
         "scipy",
         "PySide6",
@@ -33,7 +33,11 @@ def test_runtime_has_no_scipy_or_ui_network_dependencies() -> None:
     }
     for path in SRC.rglob("*.py"):
         roots = {name.split(".", 1)[0] for name in _imports(path)}
-        assert roots.isdisjoint(forbidden_roots), path
+        # H27 permits Qt only within the optional desktop adapter.
+        forbidden = forbidden_roots - {"PySide6"} if path.is_relative_to(
+            SRC / "interfaces" / "desktop"
+        ) else forbidden_roots
+        assert roots.isdisjoint(forbidden), path
 
 
 def test_h23_projection_is_an_installed_package_resource() -> None:

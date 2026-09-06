@@ -48,7 +48,7 @@ respecto de la velocidad síncrona eléctrica.
 ## Un core, varias interfaces
 
 ```text
-CLI H26 / Desktop H27-H28 / Web H29
+CLI H26 / Desktop conectado H28 (previsto) / Web H29 (prevista)
                     |
                     v
        sincrolab.application.portable
@@ -60,7 +60,8 @@ CLI H26 / Desktop H27-H28 / Web H29
 La fachada portable no contiene swing equation, integradores ni clasificación.
 Convierte DTOs explícitos hacia los casos de uso existentes y transforma sus
 resultados a tipos serializables. La CLI consume esa fachada; las interfaces
-desktop y web previstas usarán el mismo contrato.
+desktop y web usarán el mismo contrato en H28 y H29. H27 incorpora un shell
+desktop independiente, sin conexión a esa fachada.
 
 La API portable se publica desde `sincrolab.application` y se define en
 `sincrolab.application.portable`. Sus operaciones principales son:
@@ -111,6 +112,39 @@ uv sync --locked --dev
 
 NumPy es la única dependencia científica de runtime. Pytest y SciPy pertenecen
 al grupo de desarrollo; SciPy no forma parte de la ruta del producto.
+
+## Desktop: shell H27
+
+H27 incorpora un shell desktop con PySide6 y Qt Widgets: Inicio, navegador de
+casos guiados, detalles de cada ficha y acceso al Modo libre. Las fichas muestran
+concepto, objetivo y dificultad; son metadatos de presentación sin resultados,
+configuraciones científicas ni soluciones. El desktop todavía no simula ni
+implementa el ciclo educativo; la conexión a la API portable corresponde a H28.
+La web todavía no está implementada.
+
+PySide6 es una dependencia opcional del extra `desktop`; la instalación base y
+la CLI conservan NumPy como único requisito de runtime. Para instalar y lanzar
+desde este repositorio:
+
+```bash
+uv sync --locked --extra desktop
+uv run --extra desktop python -m sincrolab.interfaces.desktop
+```
+
+Para un paquete ya instalado, se puede instalar `sincrolab[desktop]` y lanzar
+`python -m sincrolab.interfaces.desktop`. Si falta PySide6, el lanzador devuelve
+código 2 con instrucciones de instalación; importar `sincrolab` o usar la CLI
+no carga Qt. El extra usa la API Qt 6 (`>=6,<7`) y `uv.lock` conserva las versiones
+resueltas. Las pantallas no realizan llamadas de red ni guardan datos.
+
+Para ejecutar las pruebas desktop (Qt offscreen, sin escritorio visible):
+
+```bash
+uv run --extra desktop pytest -q tests/test_desktop.py tests/test_desktop_boundary.py
+```
+
+Las pruebas de Qt se omiten cuando el extra no está instalado; los checks de
+packaging, metadatos e independencia del core se ejecutan también sin Qt.
 
 ## API portable: ejemplo mínimo
 
@@ -207,6 +241,7 @@ src/sincrolab/
   analysis/        first-swing, Equal Area y critical clearing angle
   application/     orquestación, aprendizaje y fachada portable
   interfaces/cli/  adaptación textual; sin solver ni clasificador propios
+  interfaces/desktop/  shell opcional Qt; presentación y navegación sin ciencia
 tests/              validación analítica, física, numérica y de contratos
 reference_cases/    inputs sintéticos y evidencia golden reproducible
 ```
@@ -242,7 +277,8 @@ permitidas.
   de `dt_s` por sí solo.
 - Los casos y soluciones guiadas son educativos y sintéticos; no son
   recomendaciones operacionales para una red real.
-- H26 prepara el core y la CLI; no incluye todavía GUI desktop ni web.
+- H27 ofrece navegación desktop; la simulación educativa en desktop queda
+  pendiente de H28 y la superficie web de H29.
 
 ## Licencia y citación
 
