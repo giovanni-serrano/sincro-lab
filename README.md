@@ -48,7 +48,7 @@ respecto de la velocidad síncrona eléctrica.
 ## Un core, varias interfaces
 
 ```text
-CLI H26 / Desktop educativo H28 / Web H29 (prevista)
+CLI H26 / Desktop educativo H28 / Web H29 (Pyodide)
                     |
                     v
        sincrolab.application.portable
@@ -60,7 +60,7 @@ CLI H26 / Desktop educativo H28 / Web H29 (prevista)
 La fachada portable no contiene swing equation, integradores ni clasificación.
 Convierte DTOs explícitos hacia los casos de uso existentes y transforma sus
 resultados a tipos serializables. La CLI y el desktop H28 consumen esa fachada.
-La interfaz web prevista en H29 reutilizará el mismo contrato.
+La web H29 ejecuta ese mismo contrato en Python dentro del navegador mediante Pyodide.
 
 La API portable se publica desde `sincrolab.application` y se define en
 `sincrolab.application.portable`. Sus operaciones principales son:
@@ -147,7 +147,6 @@ una operación activa debe finalizar antes de cerrar la ventana.
 
 H26 expone trayectorias de ángulo y velocidad; esta vista no reconstruye
 `Pe/Pm` ni añade un cálculo Equal Area. No ofrece un editor general de modelos.
-La web todavía no está implementada.
 
 PySide6 es una dependencia opcional del extra `desktop`; la instalación base y
 la CLI conservan NumPy como único requisito de runtime. Para instalar y lanzar
@@ -172,6 +171,97 @@ uv run --extra desktop pytest -q tests/test_desktop.py tests/test_desktop_bounda
 
 Las pruebas de Qt se omiten cuando el extra no está instalado; los checks de
 packaging, metadatos e independencia del core se ejecutan también sin Qt.
+
+## Web estática H29 · Python en el navegador
+
+La web educativa ejecuta el wheel normal de SincroLab en **Pyodide 0.27.7**,
+con NumPy 2.0.2 proporcionado por esa distribución. JavaScript presenta los
+datos; el bridge `interfaces/web/bridge.py` delega en `application.portable`.
+No existe backend científico. Un worker mantiene la interfaz disponible
+durante los cálculos y permite una sola operación simultánea.
+
+Desde la raíz del checkout (o del sdist extraído), prepara y sirve el sitio:
+
+```bash
+uv lock --check
+uv build --out-dir dist/h29
+uv run python web/assemble.py --wheel dist/h29/sincrolab-0.1.0-py3-none-any.whl --output dist/h29-site
+uv run python -m http.server 8765 --bind 127.0.0.1 --directory dist/h29-site
+```
+
+Abre **http://127.0.0.1:8765/**. No uses `file://`. El ensamblador copia solo
+los assets explícitos, el wheel y un manifest con hashes; comprueba que los
+fuentes Python del wheel corresponden byte por byte al checkout. Puede
+repetirse sobre su mismo output sin limpieza. Rechaza directorios con archivos
+ajenos; en ese caso elige otro directorio vacío. Los outputs `dist/` no se
+versionan. Para detener el servidor, pulsa **Ctrl+C** en su terminal.
+
+Los assets y `assemble.py` forman parte del sdist mediante una lista explícita.
+El wheel incluye el bridge Python; los assets web se ensamblan desde el
+checkout o sdist y no se incluyen en el wheel.
+
+### Verificar una ejecución
+
+1. Espera a **Entorno listo**; la carga distingue Pyodide de la instalación del
+   wheel. El catálogo procede de Python y no contiene soluciones anticipadas.
+2. Abre **Controlled effect of inertia**, pulsa **Registrar mi predicción**,
+   elige una opción y pulsa **Simular con esta predicción**.
+3. En **Intervenir**, introduce `H_s=6`, pulsa **Predecir este nuevo intento**,
+   selecciona `smaller excursion` y vuelve a simular.
+4. **Comparar** conserva el baseline, el intento, sus cambios y ambas series.
+   **Explicar** muestra el debrief, evidencia y limitaciones H24/H25. Las
+   preguntas de cierre son para reflexión; la web no realiza pre/post ni
+   asigna puntuaciones. El DTO conserva assessment ausente como `None`.
+5. **Pista 1**, **Pista 2** y **Mostrar una solución** solicitan el contenido a
+   Python solo al pulsarlos. La solución es una posibilidad pedagógica y exige
+   otra predicción antes de ejecutarse.
+6. En **Modo libre**, usa `H_s=3.5`, `t_clear_s=0.2`, `t_end_s=5`,
+   `dt_s=0.005` y pulsa **Simular** para un resultado `STABLE`. Cambia
+   `t_clear_s=0.35` para `UNSTABLE`. Para preservar un `INDETERMINATE` real,
+   usa `t_clear_s=0.2` y `t_end_s=0.21`, manteniendo los otros dos valores.
+7. **Descargar resultado JSON** conserva datos canónicos y trayectorias
+   completas. **Información del entorno de cálculo** muestra versión de
+   paquete, capacidades portable, wheel y SHA-256 comprobado en el navegador.
+8. Abre la consola de desarrollo (**F12 → Console** en Chrome) y comprueba
+   que no aparecen errores durante el flujo válido. Un input inválido muestra
+   un error de entrada, conserva la última ejecución y nunca asigna un status
+   científico al fallo.
+
+La prueba automatizada usa Chrome ya instalado y Playwright temporal, sin
+incorporarlo a las dependencias del proyecto ni descargar navegadores:
+
+```bash
+uv run pytest -q -o addopts= tests/test_web_bridge.py tests/test_web_parity.py tests/test_web_assets.py
+uv run --with playwright==1.58.0 python tests/web_browser_check.py --url http://127.0.0.1:8765 --output .audit
+```
+
+El segundo comando requiere que siga activo el servidor HTTP. Genera capturas
+reales y `H29_BROWSER.json` bajo `.audit/`, que debe excluirse localmente en
+`.git/info/exclude`. Compara payloads, estados, configuraciones, brackets,
+explicaciones y series con portable nativo. Los floats usan `atol=1e-12` y
+`rtol=1e-11` para diferencias entre plataformas; no son incertidumbres físicas.
+CLI y Desktop se contrastan además en la suite nativa. La CLI H26 no expone
+evaluación libre arbitraria: su paridad usa guided y referencias soportadas.
+
+### Red y límites de la web
+
+La primera carga descarga Pyodide, su biblioteca estándar, NumPy, micropip y
+packaging desde la base exacta
+`https://cdn.jsdelivr.net/pyodide/v0.27.7/full/`; consulta la
+[documentación oficial de Pyodide 0.27.7](https://pyodide.org/en/0.27.7/usage/quickstart.html).
+El wheel y los assets se descargan del servidor estático local. No se envían
+predicciones, inputs ni resultados; no hay trackers, cuentas o persistencia.
+El historial se conserva solo para el caso activo en memoria y se descarta al
+cambiar de caso o recargar. La web depende del CDN y **no se declara offline**.
+
+Verificada en Chrome 152 sobre Windows, con anchos 1280, 820 y 390 px; no
+implica compatibilidad universal ni soporte móvil exhaustivo. Se necesita
+WebAssembly, módulos y workers. No se implementa cancelación de un cálculo;
+recargar descarta la sesión. Los textos científicos H24/H25 conservan inglés.
+Las gráficas muestran `delta_rad` y `omega_dev_pu` ya calculados; portable no
+expone series Pe/Pm ni una operación Equal Area para esta superficie. Un
+bracket CCT estrecho no prueba convergencia temporal; se preservan por separado
+`dt_s` y el significado de `time_tolerance_s` como criterio de parada H19.
 
 ## API portable: ejemplo mínimo
 
@@ -269,6 +359,8 @@ src/sincrolab/
   application/     orquestación, aprendizaje y fachada portable
   interfaces/cli/  adaptación textual; sin solver ni clasificador propios
   interfaces/desktop/  Qt opcional; vistas, controlador y adaptador portable
+  interfaces/web/      bridge JSON a portable; sin ciencia propia
+web/                HTML/CSS/JS, worker Pyodide y ensamblado estático
 tests/              validación analítica, física, numérica y de contratos
 reference_cases/    inputs sintéticos y evidencia golden reproducible
 ```
@@ -304,8 +396,8 @@ permitidas.
   de `dt_s` por sí solo.
 - Los casos y soluciones guiadas son educativos y sintéticos; no son
   recomendaciones operacionales para una red real.
-- H28 conecta la simulación educativa desktop al core existente; la superficie
-  web permanece pendiente de H29.
+- Desktop H28 y Web H29 consumen el core existente a través de portable;
+  H29 no constituye el release final del producto H30.
 
 ## Licencia y citación
 

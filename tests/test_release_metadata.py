@@ -29,7 +29,9 @@ def test_readme_documents_portable_core_and_scientific_limits() -> None:
         "proyección empaquetada completa",
         "no es un cálculo completo de cortocircuito",
         "H27 incorpora un shell desktop",
-        "La web todavía no está implementada",
+        "Web estática H29",
+        "Pyodide 0.27.7",
+        "No existe backend científico",
     ):
         assert required in readme
     assert "CCT exacto universal" not in readme
@@ -172,7 +174,7 @@ def test_sdist_build_keeps_public_sources_and_rejects_local_files(tmp_path: Path
     )
     for name in public_metadata:
         shutil.copy2(ROOT / name, project / name)
-    for name in ("src", "reference_cases", "tests"):
+    for name in ("src", "reference_cases", "tests", "web"):
         shutil.copytree(
             ROOT / name, project / name,
             ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".pytest_cache"),
@@ -192,6 +194,13 @@ def test_sdist_build_keeps_public_sources_and_rejects_local_files(tmp_path: Path
         "src/sincrolab/interfaces/desktop/local-environment/private_module.py",
         "reference_cases/local-backup.json.bak",
         "tests/local-output.json",
+        "src/sincrolab/interfaces/web/private_module.py",
+        "src/sincrolab/interfaces/web/local-environment/private_module.py",
+        "web/private.js",
+        "web/private.json",
+        "web/local-environment/private_module.py",
+        "web/H29_screenshot.png",
+        "web/dist/private.json",
     )
     marker = "PRIVATE_" + "SDIST_SENTINEL"
     for name in local_paths:
@@ -233,6 +242,13 @@ def test_sdist_build_keeps_public_sources_and_rejects_local_files(tmp_path: Path
     }
     assert desktop_sources
     assert desktop_sources <= contents.keys()
+    assert {
+        "src/sincrolab/interfaces/web/__init__.py",
+        "src/sincrolab/interfaces/web/bridge.py",
+        "web/index.html", "web/styles.css", "web/app.js", "web/plots.js",
+        "web/runtime.js", "web/worker.js", "web/pyodide-config.js",
+        "web/assemble.py", "tests/web_browser_check.py",
+    } <= contents.keys()
     assert set(local_paths).isdisjoint(contents)
     assert all(marker.encode() not in content for content in contents.values())
     assert not any(

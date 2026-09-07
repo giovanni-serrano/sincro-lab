@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="description" content="Laboratorio educativo de estabilidad transitoria: observa, predice y experimenta con el modelo clásico SMIB.">
+  <title>SincroLab · Laboratorio de estabilidad transitoria</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Saltar al contenido</a>
+  <header class="topbar">
+    <a class="brand" href="#home" aria-label="SincroLab, inicio"><span class="brand-mark">S</span>SincroLab<span class="edition">WEB</span></a>
+    <nav aria-label="Navegación principal">
+      <button id="home-nav" disabled>Casos guiados</button>
+      <button id="free-nav" disabled>Modo libre</button>
+    </nav>
+  </header>
+  <div class="runtime-bar"><span id="runtime-status" role="status" aria-live="polite" data-state="loading_pyodide">Cargando Pyodide…</span><span>Cálculo local en tu navegador</span></div>
+  <main id="main" tabindex="-1">
+    <div id="error" role="alert" hidden></div>
+    <div id="view"><p class="eyebrow">LABORATORIO EDUCATIVO · MODELO CLÁSICO SMIB</p><h1>Casos guiados</h1><p>Elige un fenómeno, registra tu predicción y contrástala con una simulación.</p><p>Preparando el catálogo… La primera carga necesita conexión a Internet.</p></div>
+  </main>
+  <footer><p>Modelo educativo de una máquina y barra infinita. No sustituye un estudio operacional de una red real.</p><p>Los intentos permanecen en memoria durante esta sesión. Al recargar se descartan.</p><details><summary>Información del entorno de cálculo</summary><pre id="runtime-identity">Pendiente de carga.</pre></details></footer>
+  <noscript>Activa JavaScript para cargar el entorno Python y ejecutar el laboratorio.</noscript>
+</body>
+</html>

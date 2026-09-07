@@ -6,6 +6,15 @@ All notable changes to SincroLab are documented in this file.
 
 ### Added
 
+- Static educational web using Pyodide 0.27.7, its NumPy distribution and the
+  normal SincroLab wheel, with verified SHA-256 identity and a thin JSON bridge.
+- Real guided workflow, prediction invalidation on intervention, on-demand
+  hints/solution, original baseline comparisons and deterministic explanations.
+- Browser-local free mode, worker execution, explicit loading/error states,
+  responsive sampled trajectory plots and canonical JSON downloads.
+- Reproducible static assembly from checkout or sdist, explicit asset packaging,
+  native CLI/Desktop/bridge parity and a real HTTP/Chrome/Pyodide check.
+
 - Optional educational Qt desktop consuming the existing portable API through
   a single adapter, with real guided-case metadata and prediction-first runs.
 - Restricted intervention editors, retained baseline/attempt comparisons,
