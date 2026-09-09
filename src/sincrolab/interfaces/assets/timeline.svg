@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 210" role="img" aria-labelledby="title desc">
+  <title id="title">Prefalla, falla y posfalla</title>
+  <desc id="desc">Secuencia conceptual de tres etapas separadas por el inicio de falla y el despeje. Las longitudes no representan duraciones.</desc>
+  <path d="M20 90H460m-9-7 9 7-9 7" fill="none" stroke="#365A6C" stroke-width="2"/>
+  <path d="M168 60v63M317 60v63" stroke="#AC7629" stroke-width="2"/>
+  <g font-family="Segoe UI, Arial, sans-serif" fill="#102D3B" text-anchor="middle" font-size="18">
+    <text x="84" y="40" font-weight="600">Prefalla</text><text x="242" y="40" font-weight="600">Falla</text><text x="396" y="40" font-weight="600">Posfalla</text>
+    <text x="168" y="154" fill="#865B1D">Inicio de falla</text><text x="317" y="154" fill="#865B1D">Despeje</text>
+    <text x="240" y="199" fill="#5F7077">Orden de etapas · sin escala temporal</text>
+  </g>
+</svg>

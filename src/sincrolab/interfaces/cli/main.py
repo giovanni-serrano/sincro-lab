@@ -20,6 +20,7 @@ from sincrolab.application.portable import (
     TrajectoryDTO,
     dumps_portable,
     get_capabilities,
+    get_learning_content,
     get_guided_case,
     get_guided_hints,
     get_guided_solution,
@@ -37,36 +38,36 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="sincrolab",
         description=(
-            "Portable classical-SMIB scientific and guided-learning interface."
+            "Interfaz científica y de aprendizaje guiado del modelo clásico SMIB."
         ),
     )
     commands = parser.add_subparsers(dest="command", required=True)
 
     capabilities = commands.add_parser(
-        "capabilities", help="Show portable API capabilities."
+        "capabilities", help="Mostrar capacidades de la API portable."
     )
     _add_json_flag(capabilities)
 
-    guided = commands.add_parser("guided", help="Use H25 guided cases.")
+    guided = commands.add_parser("guided", help="Explorar los casos guiados.")
     guided_commands = guided.add_subparsers(dest="guided_command", required=True)
-    guided_list = guided_commands.add_parser("list", help="List guided cases.")
+    guided_list = guided_commands.add_parser("list", help="Listar los casos guiados.")
     _add_json_flag(guided_list)
-    guided_show = guided_commands.add_parser("show", help="Inspect one guided case.")
+    guided_show = guided_commands.add_parser("show", help="Consultar un caso guiado.")
     guided_show.add_argument("case_id")
     _add_json_flag(guided_show)
     guided_hints = guided_commands.add_parser(
-        "hints", help="Reveal a progressive hint prefix."
+        "hints", help="Revelar pistas progresivas."
     )
     guided_hints.add_argument("case_id")
     guided_hints.add_argument("--count", type=int, required=True)
     _add_json_flag(guided_hints)
     guided_solution = guided_commands.add_parser(
-        "solution", help="Explicitly reveal one pedagogical solution."
+        "solution", help="Mostrar explícitamente una solución pedagógica posible."
     )
     guided_solution.add_argument("case_id")
     _add_json_flag(guided_solution)
     guided_run = guided_commands.add_parser(
-        "run", help="Run a prediction-first guided attempt."
+        "run", help="Ejecutar un intento guiado después de registrar una predicción."
     )
     guided_run.add_argument("case_id")
     guided_run.add_argument("--prediction", required=True)
@@ -76,7 +77,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         default=[],
         metavar="KEY=VALUE",
-        help="Apply an allowed guided parameter change; may be repeated.",
+        help="Aplicar un cambio permitido de parámetro; puede repetirse.",
     )
     guided_run.add_argument("--hints", type=int, default=0)
     guided_run.add_argument("--reveal-solution", action="store_true")
@@ -95,29 +96,29 @@ def build_parser() -> argparse.ArgumentParser:
     _add_output_options(guided_run)
 
     reference = commands.add_parser(
-        "reference", help="Query or reproduce H23 scientific references."
+        "reference", help="Consultar o reproducir referencias científicas técnicas."
     )
     reference_commands = reference.add_subparsers(
         dest="reference_command", required=True
     )
     reference_list = reference_commands.add_parser(
-        "list", help="List scientific reference cases."
+        "list", help="Listar los casos de referencia científica."
     )
     _add_json_flag(reference_list)
     reference_show = reference_commands.add_parser(
-        "show", help="Inspect one scientific reference case."
+        "show", help="Consultar un caso de referencia científica."
     )
     reference_show.add_argument("case_id")
     _add_json_flag(reference_show)
     reference_run = reference_commands.add_parser(
-        "run", help="Recompute a supported reference through the core."
+        "run", help="Recalcular una referencia compatible mediante el núcleo."
     )
     reference_run.add_argument("case_id")
     reference_run.add_argument(
         "--dt-s",
         type=float,
         default=None,
-        help="Adversarial reference resolution in seconds.",
+        help="Resolución de la referencia adversarial, en segundos.",
     )
     _add_output_options(reference_run)
     return parser
@@ -125,6 +126,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Execute the CLI, translating expected input errors to exit code 2."""
+    # Portable text contains Unicode symbols; pipes must be UTF-8 on Windows too.
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8")
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
@@ -174,7 +180,7 @@ def _dispatch(args: argparse.Namespace) -> object:
 
 
 def _add_json_flag(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    parser.add_argument("--json", action="store_true", help="Mostrar la salida técnica JSON.")
 
 
 def _add_output_options(parser: argparse.ArgumentParser) -> None:
@@ -224,61 +230,69 @@ def _emit_result(result: object, *, as_json: bool) -> None:
     print(_summary_line(result))
 
 
+def _meaning_label(key: str) -> str:
+    return next(item.label for item in get_learning_content().meanings if item.key == key)
+
+
+def _quantity_label(key: str) -> str:
+    return next(item.label for item in get_learning_content().quantities if item.key == key)
+
+
 def _summary_line(value: object) -> str:
     if isinstance(value, GuidedCaseDTO):
         editable = ", ".join(
-            f"{item.key}=[{item.minimum}, {item.maximum}] {item.unit}"
+            f"{item.label}=[{item.minimum}, {item.maximum}] {item.unit}"
             for item in value.editable_parameters
         )
         return (
             f"{value.case_id}: {value.title}\n"
-            f"Objective: {value.learning_objective}\n"
-            f"Prediction: {value.prediction_prompt}\n"
-            f"Editable: {editable}"
+            f"Objetivo: {value.learning_objective}\n"
+            f"Predicción: {value.prediction_prompt}\n"
+            f"Parámetros editables: {editable}"
         )
     case_id = getattr(value, "case_id", None)
     title = getattr(value, "title", None)
     if case_id and title:
         return f"{case_id}: {title}"
     if isinstance(value, GuidedHintsDTO):
-        lines = [f"{value.case_id}: {len(value.hints)} hint(s) revealed"]
+        lines = [f"{value.case_id}: {len(value.hints)} pista(s) revelada(s)"]
         lines.extend(
-            f"Hint {index}: {hint}"
+            f"Pista {index}: {hint}"
             for index, hint in enumerate(value.hints, start=1)
         )
         return "\n".join(lines)
     if isinstance(value, PedagogicalSolutionDTO):
         settings = ", ".join(
-            f"{item.key}={item.value} {item.unit}" for item in value.settings
+            f"{_quantity_label(item.key)}={item.value} {item.unit}" for item in value.settings
         )
         return (
-            f"{value.case_id}: one possible pedagogical solution\n"
-            f"Settings: {settings}\n"
-            f"Explanation: {value.explanation}\n"
-            f"Limitation: {value.limitation}"
+            f"{value.case_id}: una solución pedagógica posible\n"
+            f"Configuración: {settings}\n"
+            f"Explicación: {value.explanation}\n"
+            f"Limitación: {value.limitation}"
         )
     if isinstance(value, GuidedAttemptResultDTO):
         result = value.attempted_evaluation.first_swing
         assessment = value.local_assessment
         score = (
-            "not assessed"
+            "no realizada"
             if not assessment.assessed
             else f"{assessment.pre_score.correct}/{assessment.pre_score.total} -> "
             f"{assessment.post_score.correct}/{assessment.post_score.total}"
         )
         return (
-            f"{value.case_id}: status={result.status} reason={result.reason} "
-            f"goal_achieved={value.goal_evaluation.achieved} assessment={score}\n"
-            f"Debrief: {value.debrief_summary}"
+            f"{value.case_id}: {_meaning_label(result.status)} · {_meaning_label(result.reason)}\n"
+            f"Objetivo alcanzado: {'sí' if value.goal_evaluation.achieved else 'no'} · Autoevaluación: {score}\n"
+            f"Explicación final: {value.debrief_summary}"
         )
     if isinstance(value, ReferenceCaseResultDTO):
         first_swing = value.evaluation.first_swing
         return (
-            f"{value.case_id}: observed={first_swing.status} "
-            f"reason={first_swing.reason} "
-            f"verified_observations={len(value.observations)} "
-            "all_reported_observations_match="
-            f"{value.all_reported_observations_match_expected}"
+            f"{value.case_id}: {_meaning_label(first_swing.status)} · "
+            f"{_meaning_label(first_swing.reason)}\n"
+            f"Observaciones verificadas: {len(value.observations)} · "
+            "Todas las observaciones reportadas coinciden: "
+            f"{'sí' if value.all_reported_observations_match_expected else 'no'}"
         )
     if isinstance(value, ReferenceCaseDTO):
         evidence = ", ".join(
@@ -286,10 +300,10 @@ def _summary_line(value: object) -> str:
         )
         return (
             f"{value.case_id}: {value.purpose}\n"
-            f"Evidence types present: {evidence}\n"
-            f"Runtime scope: {value.runtime_reproduction_scope}\n"
-            f"Canonical source: {value.canonical_source}\n"
-            f"Limitation: {value.limitation}"
+            f"Tipos de evidencia (identificadores técnicos): {evidence}\n"
+            f"Alcance técnico de reproducción: {value.runtime_reproduction_scope}\n"
+            f"Fuente canónica: {value.canonical_source}\n"
+            f"Limitación: {value.limitation}"
         )
     case_id = getattr(value, "case_id", None)
     if case_id:

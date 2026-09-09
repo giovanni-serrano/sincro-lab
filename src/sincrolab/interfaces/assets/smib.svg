@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 240" role="img" aria-labelledby="title desc">
+  <title id="title">Sistema de una máquina conectada a una barra infinita</title>
+  <desc id="desc">Un generador síncrono se conecta a la barra infinita a través de una red equivalente. Esquema conceptual sin parámetros ni topología de una red real.</desc>
+  <g fill="none" stroke="#365A6C" stroke-width="2" stroke-linejoin="round">
+    <circle cx="73" cy="123" r="33" fill="#FFFCF5"/>
+    <path d="M53 123c6-18 14-18 20 0s14 18 20 0" stroke="#087895"/>
+    <path d="M106 123H198M282 123H404"/>
+    <rect x="198" y="108" width="84" height="30" rx="2" fill="#EFEBDD"/>
+    <path d="M404 86v74M412 86v74" stroke-width="3"/>
+    <path d="M404 86h21m-21 74h21"/>
+  </g>
+  <g font-family="Segoe UI, Arial, sans-serif" text-anchor="middle" fill="#102D3B" font-size="18">
+    <text x="73" y="27" font-weight="600">Generador</text><text x="73" y="50" font-weight="600">síncrono</text>
+    <text x="240" y="27" font-weight="600">Red</text><text x="240" y="50" font-weight="600">equivalente</text>
+    <text x="408" y="27" font-weight="600">Barra</text><text x="408" y="50" font-weight="600">infinita</text>
+    <text x="240" y="130" font-size="21" font-style="italic">X</text>
+    <g fill="#5F7077"><text x="73" y="197">Rotor</text><text x="73" y="220">Ángulo δ</text><text x="240" y="197">Transferencia</text><text x="240" y="220">eléctrica</text><text x="408" y="190">Tensión y</text><text x="408" y="212">frecuencia</text><text x="408" y="234">fijas</text></g>
+  </g>
+</svg>

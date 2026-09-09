@@ -61,6 +61,41 @@ def equivalent(actual, expected, statistics, path="root"):
         assert type(actual) is type(expected) and actual == expected, (path,actual,expected)
 
 
+def select_topic(page, topic_id):
+    """Use the navigation control available at the current viewport."""
+    if page.locator(".topic-picker").is_visible():
+        page.locator("#theory-topics").select_option(topic_id)
+    elif topic_id == "glossary":
+        page.locator(".topic-groups").get_by_role("button", name="Glosario →", exact=True).click()
+    else:
+        page.locator(f"#topic-nav-{topic_id}").click()
+
+
+def verify_topic_navigation(page):
+    """The grouped index and compact picker are mutually exclusive at 1100px."""
+    original_viewport = page.viewport_size
+    observations = []
+    try:
+        for width in (1280, 1101, 1100, 820, 390):
+            page.set_viewport_size({"width": width, "height": 900})
+            groups = page.locator(".topic-groups")
+            picker = page.locator(".topic-picker")
+            assert groups.is_visible() == (width > 1100), width
+            assert picker.is_visible() == (width <= 1100), width
+            assert groups.locator("button[id^=topic-nav-]").count() == 14
+            assert picker.locator("optgroup option").count() == 14
+            select_topic(page, "smib")
+            assert page.locator("#theory-topics").input_value() == "smib"
+            observations.append({"width": width,
+                "groups_visible": groups.is_visible(),
+                "picker_visible": picker.is_visible(),
+                "groups_display": groups.evaluate("node => getComputedStyle(node).display"),
+                "picker_display": picker.evaluate("node => getComputedStyle(node).display")})
+    finally:
+        page.set_viewport_size(original_viewport)
+    return observations
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url",default="http://127.0.0.1:8765")
@@ -98,7 +133,7 @@ def main():
             print("PASS",label,flush=True)
 
         def run_guided(request):
-            page.locator("#prediction").select_option(request.prediction)
+            page.locator(f'#prediction input[value="{request.prediction}"]').check()
             assert page.locator("#run-guided").is_enabled()
             page.locator("#run-guided").click()
             ready()
@@ -117,6 +152,58 @@ def main():
         assert identity["pyodide"] == "0.27.7"
         check(identity["capabilities"],portable.get_capabilities().to_dict(),"runtime capabilities")
         check(result(),json.loads(portable.dumps_portable(portable.list_guided_cases())),"ordered catalog")
+        shared = portable.get_learning_content().to_dict()
+        actual_content = page.evaluate("window.__h29Messages.find(x=>x.type==='result' && x.operation==='learning_content')?.data")
+        # Request IDs provide the operation provenance of each result message.
+        if actual_content is None:
+            actual_content = page.evaluate("""() => {
+                const request = window.__h29Requests.find(x=>x.operation==='learning_content');
+                return window.__h29Messages.find(x=>x.type==='result' && x.id===request.id).data;
+            }""")
+        check(actual_content, shared, "shared learning content")
+        capture("HOME")
+        page.locator("#home-nav").click()
+        assert page.locator(".case-card button").evaluate_all("nodes=>nodes.map(x=>x.id)") == [
+            "case-" + item["case_id"] for item in shared["cases"]
+        ]
+        page.locator("#learn-nav").click()
+        evidence["topic_navigation"] = verify_topic_navigation(page)
+        for topic in shared["topics"]:
+            select_topic(page, topic["topic_id"])
+            assert topic["learning_objective"] in page.locator("#view").inner_text()
+            blocks = page.locator("[data-block-kind]")
+            assert blocks.evaluate_all("nodes => nodes.map(x => x.dataset.blockKind)") == [block["kind"] for block in topic["blocks"]]
+            assert blocks.locator("p").all_text_contents() == [block["text"] for block in topic["blocks"]]
+        for index, topic in enumerate(shared["topics"]):
+            for key in topic["prerequisite_topic_ids"]:
+                select_topic(page, topic["topic_id"])
+                page.locator(f"#theory-topic-{key}").click()
+                assert page.locator("#theory-topics").input_value() == key
+            for key in topic["case_ids"]:
+                page.locator("#learn-nav").click()
+                select_topic(page, topic["topic_id"])
+                page.locator(f"#theory-case-{key}").click()
+                ready()
+                assert not page.locator(".result-status").count()
+                assert page.locator("#phase-2").is_disabled()
+                expected_case = portable.get_guided_case(key)
+                assert page.locator("#view h1").inner_text() == expected_case.title
+                page.locator("#learn-nav").click()
+            select_topic(page, topic["topic_id"])
+            if index + 1 < len(shared["topics"]):
+                page.locator("#theory-next").click()
+                assert page.locator("#theory-topics").input_value() == shared["topics"][index + 1]["topic_id"]
+        operations = page.evaluate("window.__h29Requests.map(x=>x.operation)")
+        assert not {"guided_run", "guided_hints", "guided_solution"}.intersection(operations)
+        evidence["steps"].append("all structured topics, prerequisites and experiment links without execution")
+        capture("LEARN_LIMITATIONS")
+        select_topic(page, "swing-equation")
+        capture("LEARN_EQUATIONS")
+        select_topic(page, "glossary")
+        for term in shared["glossary"]:
+            assert term["description"] in page.locator("#view").inner_text()
+        capture("GLOSSARY")
+        page.locator("#home-nav").click()
         capture("HOME")
         capture("RUNTIME_READY")
         requests = guided_requests()
@@ -129,12 +216,39 @@ def main():
             assert "guided_solution" not in outgoing and "guided_hints" not in outgoing
             assert page.locator("#phase-4").is_disabled()
             assert not page.locator(".result-status").count()
-            if request.case_id == "controlled-inertia-effect": capture("OBSERVE")
+            if request.case_id == "controlled-inertia-effect":
+                capture("OBSERVE")
+                page.get_by_text("Parámetros de la configuración inicial", exact=True).click()
+                advanced = page.get_by_text("Detalles avanzados · configuración completa", exact=True).locator("..")
+                assert not advanced.locator("table").is_visible()
+                advanced.locator("summary").click()
+                assert advanced.locator("table").is_visible()
+                for key in ("D_pu", "f_base_hz", "dt_s"):
+                    metadata = next(item for item in shared["quantities"] if item["key"] == key)
+                    assert f"{metadata['label']} · {metadata['symbol']} ({metadata['unit']})" in advanced.inner_text()
+                    assert metadata["description"] in advanced.inner_text()
+                capture("ADVANCED")
+                advanced.locator("summary").click()
+            preparation = next(item for item in shared["cases"] if item["case_id"] == request.case_id)
+            for key in ("remember", "observe", "experimental_question", "prediction_guidance"):
+                assert preparation[key] in page.locator("#case-preparation").inner_text()
             page.locator("#begin-prediction").click()
+            assert page.locator("#run-guided").is_disabled()
             assert page.locator("#run-guided").is_disabled()
             before = page.evaluate("window.__h29Requests.length")
             page.locator("#run-guided").evaluate("button=>button.click()")
             assert page.evaluate("window.__h29Requests.length") == before
+            for key in preparation["topic_ids"]:
+                page.locator("#case-preparation summary").click()
+                page.locator(f"#review-{key}").click()
+                assert page.locator("#theory-topics").input_value() == key
+                page.locator("#theory-return-case").click()
+                assert page.locator("#run-guided").is_disabled()
+            page.locator(f'#prediction input[value="{request.prediction}"]').check()
+            page.locator("#case-preparation summary").click()
+            page.locator(f"#review-{preparation['topic_ids'][0]}").click()
+            page.locator("#theory-return-case").click()
+            assert page.locator("#prediction input:checked").get_attribute("value") == request.prediction
             if request.case_id == "controlled-inertia-effect": capture("PREDICT")
             baseline = run_guided(request)
             if request.case_id == "controlled-inertia-effect":
@@ -147,6 +261,8 @@ def main():
                 attempt = run_guided(requests[-1])
                 assert attempt["baseline_evaluation"] == baseline["baseline_evaluation"]
                 capture("COMPARE")
+                page.locator("#phase-3").click()
+                assert page.locator("#input-H_s").input_value() == "6"
                 page.locator("#phase-5").click()
                 assert attempt["debrief_summary"] in page.locator("#view").inner_text()
                 assert attempt["attempted_evaluation"]["explanation"]["summary"] in page.locator("#view").inner_text()
@@ -180,8 +296,8 @@ def main():
             page.locator("#run-free").click(); ready()
             expected = portable.evaluate_transient(config).to_dict()
             check(result(),expected,f"free:{expected['first_swing']['status']}")
-            assert page.locator(".result-status").text_content() == expected["first_swing"]["status"].upper()
-            capture("FREE_" + expected["first_swing"]["status"].upper())
+            assert page.locator(".result-status").text_content() == next(item.label for item in portable.get_learning_content().meanings if item.key == expected["first_swing"]["status"])
+            capture("FREE_" + next(item.label for item in portable.get_learning_content().meanings if item.key == expected["first_swing"]["status"]))
         assert evidence["console_errors"] == [] and evidence["page_errors"] == []
         evidence["clean_console_before_deliberate_errors"] = True
         # A real domain rejection must leave the previous completed result intact.
@@ -189,7 +305,7 @@ def main():
         page.locator("#run-free").click()
         page.wait_for_function("document.querySelector('#error').hidden === false")
         assert "Traceback" not in page.locator("#error").inner_text()
-        assert page.locator(".result-status").text_content() == "INDETERMINATE"
+        assert page.locator(".result-status").text_content() == "No concluyente"
         capture("INPUT_ERROR")
         page.locator("#input-dt_s").fill("0.005")
         page.locator("#run-free").click(); ready()

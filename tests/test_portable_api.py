@@ -175,8 +175,8 @@ def test_guided_hints_are_progressive_and_solution_is_explicit() -> None:
     assert len(first.hints) == 1
     solution = get_guided_solution("late-clearing-bracket")
     assert solution.settings[0].key == "t_clear_s"
-    assert "one" in solution.explanation.lower()
-    assert "not a protection setting" in solution.limitation
+    assert "una" in solution.explanation.lower()
+    assert "no un ajuste de protección" in solution.limitation
 
 
 def test_guided_request_round_trips_through_json_mapping() -> None:
@@ -631,4 +631,4 @@ def test_h24_explanation_is_transported_without_semantic_change() -> None:
     assert explanation.kind == "first_swing"
     assert evidence["status"] == "stable"
     assert evidence["reason"] == "reversal_before_crossing"
-    assert "sampled" in explanation.summary.lower()
+    assert "muestreada" in explanation.summary.lower()

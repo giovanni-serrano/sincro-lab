@@ -20,6 +20,7 @@ from typing import Any, ClassVar
 
 import numpy as np
 
+from sincrolab.application import learning_content
 from sincrolab import __version__
 from sincrolab.analysis import FirstSwingEventBracket
 from sincrolab.application.guided_learning import (
@@ -89,6 +90,29 @@ class PortableCapabilities(_PortableDTO):
     reference_operations: tuple[str, ...]
     export_formats: tuple[str, ...]
     trajectory_fields: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class LearningContentDTO(_PortableDTO):
+    """Read-only product semantics, separate from scientific request schemas."""
+
+    topics: tuple[learning_content.TheoryTopic, ...]
+    quantities: tuple[learning_content.DisplayQuantity, ...]
+    glossary: tuple[learning_content.TermDefinition, ...]
+    meanings: tuple[learning_content.TermDefinition, ...]
+    cases: tuple[learning_content.CaseGuidance, ...]
+    learning_path: tuple[learning_content.LearningStep, ...]
+    block_labels: tuple[learning_content.TermDefinition, ...]
+
+
+def get_learning_content() -> LearningContentDTO:
+    """Expose shared Spanish content without executing or revealing a solution."""
+    return LearningContentDTO(
+        learning_content.TOPICS, learning_content.QUANTITIES,
+        learning_content.GLOSSARY, learning_content.MEANINGS,
+        learning_content.CASE_GUIDANCE, learning_content.LEARNING_PATH,
+        learning_content.BLOCK_LABELS,
+    )
 
 
 @dataclass(frozen=True)
@@ -507,6 +531,7 @@ class _ReferenceDefinition:
 
 
 PortableOutput = (
+    LearningContentDTO |
     PortableCapabilities
     | GuidedCaseSummaryDTO
     | GuidedCaseDTO
@@ -786,6 +811,14 @@ def trajectory_to_csv(trajectory: TrajectoryDTO) -> str:
 def _encode_portable(value: object) -> object:
     if isinstance(value, _PortableDTO):
         return value.to_dict()
+    if isinstance(value, (
+        learning_content.TheoryTopic, learning_content.LearningBlock,
+        learning_content.DisplayQuantity,
+        learning_content.TermDefinition, learning_content.CaseGuidance,
+        learning_content.LearningStep,
+    )):
+        return {field.name: _encode_portable(getattr(value, field.name))
+                for field in fields(value)}
     if isinstance(value, Enum):
         return value.value
     if value is None or isinstance(value, (bool, int, float, str)):

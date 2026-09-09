@@ -30,9 +30,9 @@ def test_cli_module_help() -> None:
 def test_cli_lists_guided_cases(capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["guided", "list"]) == 0
     output = capsys.readouterr().out
-    assert "late-clearing-bracket: Clearing time and the temporal transition bracket" in output
-    assert "controlled-inertia-effect: Controlled effect of inertia" in output
-    assert "first-swing-event-evidence: Stable and unstable first-swing evidence" in output
+    assert "late-clearing-bracket: Efecto del tiempo de despeje" in output
+    assert "controlled-inertia-effect: Efecto controlado de la inercia" in output
+    assert "first-swing-event-evidence: Reconocer la estabilidad de primera oscilación" in output
 
 
 def test_cli_inspects_guided_case_as_json(
@@ -190,7 +190,7 @@ def test_cli_reveals_hints_progressively_and_solution_explicitly(
     assert main(["guided", "solution", "late-clearing-bracket", "--json"]) == 0
     solution = json.loads(capsys.readouterr().out)
     assert solution["settings"][0]["key"] == "t_clear_s"
-    assert "not a protection setting" in solution["limitation"]
+    assert "no un ajuste de protección" in solution["limitation"]
 
 
 def test_cli_human_output_reveals_requested_hint_and_solution(
@@ -198,13 +198,13 @@ def test_cli_human_output_reveals_requested_hint_and_solution(
 ) -> None:
     assert main(["guided", "hints", "late-clearing-bracket", "--count", "1"]) == 0
     hint_output = capsys.readouterr().out
-    assert "Hint 1:" in hint_output
-    assert "accelerating power" in hint_output
+    assert "Pista 1:" in hint_output
+    assert "balance acelerante" in hint_output
     assert main(["guided", "solution", "late-clearing-bracket"]) == 0
     solution_output = capsys.readouterr().out
-    assert "one possible pedagogical solution" in solution_output
-    assert "Explanation:" in solution_output
-    assert "Limitation:" in solution_output
+    assert "una solución pedagógica posible" in solution_output
+    assert "Explicación:" in solution_output
+    assert "Limitación:" in solution_output
 
 
 def test_cli_lists_and_reproduces_reference_case(
@@ -369,3 +369,35 @@ def test_cli_adapter_contains_no_solver_or_classifier_implementation() -> None:
         "assess_smib_first_swing",
         "simulate_smib_transient",
     }.isdisjoint(called_names)
+
+
+def test_cli_emits_utf8_even_when_the_process_locale_requests_ascii():
+    import os
+    environment = dict(os.environ, PYTHONIOENCODING="ascii")
+    completed = subprocess.run(
+        [sys.executable, "-m", "sincrolab.interfaces.cli", "guided", "run",
+         "controlled-inertia-effect", "--prediction", "smaller excursion",
+         "--set", "H_s=6", "--json"],
+        capture_output=True, env=environment,
+    )
+    assert completed.returncode == 0, completed.stderr.decode("utf-8")
+    result = json.loads(completed.stdout.decode("utf-8"))
+    assert "3.5 → 6 s" in result["debrief_summary"]
+    assert "Diagnóstico inicial" in result["debrief_summary"]
+
+
+def test_cli_primary_guided_copy_uses_shared_spanish_labels(capsys):
+    from sincrolab.interfaces.cli.main import build_parser
+
+    help_text = build_parser().format_help()
+    assert "casos guiados" in help_text
+    assert "H25" not in help_text
+    assert main(["guided", "show", "controlled-inertia-effect"]) == 0
+    shown = capsys.readouterr().out
+    assert "Inercia del generador" in shown
+    assert "H_s" not in shown
+    assert main(["guided", "run", "first-swing-event-evidence", "--prediction", "stable"]) == 0
+    result = capsys.readouterr().out
+    assert "Estable" in result
+    assert "Reversión antes del cruce" in result
+    assert "status=" not in result

@@ -1,0 +1,86 @@
+{
+  "colors": {
+    "canvas": "#F7F2E5",
+    "surface": "#FFFCF5",
+    "surface_muted": "#EFEBDD",
+    "sidebar": "#365A6C",
+    "ink": "#102D3B",
+    "muted": "#5F7077",
+    "border": "#D9D5C8",
+    "accent": "#087895",
+    "accent_hover": "#065F77",
+    "accent_soft": "#DCEEF0",
+    "stable": "#34765B",
+    "unstable": "#B4514F",
+    "indeterminate": "#6D687B",
+    "event": "#AC7629"
+  },
+  "topic_groups": [
+    {
+      "label": "Fundamentos",
+      "start": 0,
+      "stop": 4
+    },
+    {
+      "label": "Dinámica",
+      "start": 4,
+      "stop": 7
+    },
+    {
+      "label": "Perturbación y primera oscilación",
+      "start": 7,
+      "stop": 11
+    },
+    {
+      "label": "Simulación e interpretación",
+      "start": 11,
+      "stop": 14
+    }
+  ],
+  "diagrams": {
+    "smib": {
+      "file": "smib.svg",
+      "title": "Una máquina, una referencia de red",
+      "caption": "Esquema conceptual SMIB. La conexión resume la red equivalente; no representa la topología completa de una red real.",
+      "topics": [
+        "before-starting",
+        "smib"
+      ],
+      "width": 480,
+      "height": 240
+    },
+    "rotor-angle": {
+      "file": "rotor-angle.svg",
+      "title": "El ángulo es relativo",
+      "caption": "Posiciones eléctricas conceptuales, sin escala. La referencia síncrona representa la fase de la red, no una pieza mecánica.",
+      "topics": [
+        "synchronous-generator",
+        "rotor-angle"
+      ],
+      "width": 480,
+      "height": 320
+    },
+    "timeline": {
+      "file": "timeline.svg",
+      "title": "Tres etapas de la perturbación",
+      "caption": "Secuencia conceptual, sin escala temporal. Cada etapa usa su Pmax equivalente.",
+      "topics": [
+        "fault-stages",
+        "clearing-time"
+      ],
+      "width": 480,
+      "height": 210
+    },
+    "causal-chain": {
+      "file": "causal-chain.svg",
+      "title": "Del balance de potencia al ángulo",
+      "caption": "Cadena conceptual mostrada para D = 0. Para el caso con amortiguamiento, consulta la ecuación canónica del tema.",
+      "topics": [
+        "swing-equation",
+        "inertia"
+      ],
+      "width": 480,
+      "height": 340
+    }
+  }
+}

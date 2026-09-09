@@ -1,12 +1,14 @@
 """Main window composing views, navigation and one portable controller."""
 
+from PySide6.QtCore import QSize
 from PySide6.QtWidgets import (
     QButtonGroup, QFrame, QHBoxLayout, QMainWindow, QStackedWidget,
     QVBoxLayout, QWidget,
 )
 
 from sincrolab.interfaces.desktop.theme import STYLE_SHEET
-from sincrolab.interfaces.desktop.views import CatalogPage
+from sincrolab.interfaces.desktop.assets import navigation_icon
+from sincrolab.interfaces.desktop.views import CatalogPage, LearnPage
 from sincrolab.interfaces.desktop.workflow import CaseDetailPage, FreeModePage
 from sincrolab.interfaces.desktop.widgets import button, label
 from sincrolab.interfaces.desktop.worker import OperationWorker
@@ -25,7 +27,7 @@ class MainWindow(QMainWindow):
         self.operation = ""
         self.last_error: BaseException | None = None
         self.setWindowTitle("SincroLab — Laboratorio educativo")
-        self.resize(1160, 860)
+        self.resize(1280, 820)
         self.setMinimumSize(820, 620)
         self.setStyleSheet(STYLE_SHEET)
         container = QWidget()
@@ -39,35 +41,41 @@ class MainWindow(QMainWindow):
         navigation.setContentsMargins(16, 28, 16, 24)
         navigation.setSpacing(10)
         navigation.addWidget(label("SincroLab", "brand"))
-        navigation.addWidget(label("Laboratorio educativo", "muted"))
+        navigation.addWidget(label("Laboratorio educativo", "sidebar_note"))
         navigation.addSpacing(32)
         self.navigation_group = QButtonGroup(self)
         self.navigation_buttons = {}
-        for key, title in (("home", "Inicio"), ("cases", "Casos guiados"), ("free", "Modo libre")):
+        for key, title in (("home", "Inicio"), ("learn", "Aprender"), ("cases", "Casos guiados"), ("free", "Modo libre")):
             control = button(title, f"nav_{key}", "nav")
             control.setCheckable(True)
+            control.setIcon(navigation_icon(key))
+            control.setIconSize(QSize(18, 18))
             control.clicked.connect(lambda checked=False, page=key: self.navigate(page))
             self.navigation_group.addButton(control)
             self.navigation_buttons[key] = control
             navigation.addWidget(control)
         navigation.addStretch()
-        navigation.addWidget(label("DESKTOP · LABORATORIO", "eyebrow"))
-        navigation.addWidget(label("Modelo educativo clásico SMIB", "muted"))
-        navigation.addWidget(label("Historial solo en memoria", "muted"))
+        navigation.addWidget(label("Observar. Predecir.\nInterpretar y experimentar.", "sidebar_note"))
         layout.addWidget(self.sidebar)
         self.stack = QStackedWidget()
-        self.home = CatalogPage(self.controller.catalog, home=True)
+        self.home = CatalogPage(self.controller.catalog, home=True, content=self.controller.content)
         self.cases = CatalogPage(self.controller.catalog, home=False)
-        self.free = FreeModePage(self.controller.free_fields(), self.controller.free_configuration())
+        self.free = FreeModePage(self.controller.free_fields(), self.controller.free_configuration(), self.controller.free_configuration(advanced=True))
+        self.learn = LearnPage(self.controller.content)
         self.detail = CaseDetailPage()
-        self.pages = {"home": self.home, "cases": self.cases, "free": self.free}
+        self.pages = {"home": self.home, "learn": self.learn, "cases": self.cases, "free": self.free}
         for page in (*self.pages.values(), self.detail):
             self.stack.addWidget(page)
         for page in (self.home, self.cases):
             page.case_selected.connect(self.open_case)
+            page.learn_requested.connect(self.open_topic)
         self.home.browse_requested.connect(lambda: self.navigate("cases"))
         self.home.free_requested.connect(lambda: self.navigate("free"))
+        self.cases.free_requested.connect(lambda: self.navigate("free"))
         self.free.browse_requested.connect(lambda: self.navigate("cases"))
+        self.detail.learn_requested.connect(self.open_topic)
+        self.learn.case_requested.connect(self.open_case)
+        self.learn.back_requested.connect(lambda: self.open_case(self.controller.case.case_id))
         self.detail.back_requested.connect(lambda: self.navigate("cases"))
         self.detail.intent.connect(self.handle_intent)
         self.free.intent.connect(self.handle_intent)
@@ -79,9 +87,18 @@ class MainWindow(QMainWindow):
     def navigate(self, destination: str) -> None:
         if self.worker is not None:
             return
+        active_case = getattr(self.controller, "case", None)
+        self.learn.return_button.setVisible(active_case is not None)
+        if active_case is not None:
+            number = next(i for i, item in enumerate(self.controller.catalog, 1) if item.case_id == active_case.case_id)
+            self.learn.return_button.setText(f"← Volver al Caso {number} · {self.controller.phase}")
         self.stack.setCurrentWidget(self.pages[destination])
         self.navigation_buttons[destination].setChecked(True)
         self.navigation_buttons[destination].setFocus()
+
+    def open_topic(self, topic_id: str) -> None:
+        self.learn.select_topic(topic_id)
+        self.navigate("learn")
 
     def open_case(self, case_id: str) -> None:
         if self.worker is not None:
@@ -181,7 +198,8 @@ class MainWindow(QMainWindow):
 
     def _show_error(self, error: BaseException) -> None:
         self.last_error = error
-        message = f"No se completó la operación. {type(error).__name__}: {error}"
+        message = ("No se completó la operación. Revisa la predicción, los parámetros, "
+                   "sus límites y el orden de los tiempos. Un fallo no es un diagnóstico de estabilidad.")
         target = self.free if self.stack.currentWidget() is self.free else self.detail
         target.error.setText(message)
         target.error.show()

@@ -38,14 +38,14 @@ def test_catalog_metadata_order_and_capabilities_across_native_surfaces():
     assert cli("guided", "list") == dispatch("guided_list") == catalog
     assert cli("capabilities") == dispatch("capabilities") == portable.get_capabilities().to_dict()
     desktop = DesktopController()
-    assert [case.case_id for case in desktop.catalog] == [case["case_id"] for case in catalog]
+    assert [case.case_id for case in desktop.catalog] == [case.case_id for case in portable.get_learning_content().cases]
     for item in catalog:
         case_id = item["case_id"]
         assert cli("guided","show",case_id) == dispatch("guided_show",{"case_id":case_id}) == portable.get_guided_case(case_id).to_dict()
         view = desktop.select_case(case_id)
         assert view.preview.title == item["title"]
         assert view.preview.objective == item["learning_objective"]
-        assert view.preview.difficulty == item["difficulty"]
+        assert view.preview.difficulty == next(term.label for term in portable.get_learning_content().meanings if term.key == item["difficulty"])
         assert desktop.case.to_dict() == portable.get_guided_case(case_id).to_dict()
 
 

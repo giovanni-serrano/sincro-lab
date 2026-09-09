@@ -27,6 +27,7 @@ class InputField:
     unit: str = ""
     minimum: float | None = None
     maximum: float | None = None
+    description: str = ""
 
 
 @dataclass(frozen=True)
@@ -48,6 +49,10 @@ class CaseView:
     hints_available: int
     has_solution: bool
     provenance: str
+    advanced_configuration: tuple[tuple[str, str], ...] = ()
+    guidance: tuple[tuple[str, str], ...] = ()
+    prediction_labels: tuple[tuple[str, str, str], ...] = ()
+    topic_links: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -56,6 +61,8 @@ class Curve:
     time_s: tuple[float, ...]
     delta_rad: tuple[float, ...]
     omega_dev_pu: tuple[float, ...]
+    axis_labels: tuple[str, ...] = ()
+    events: tuple[tuple[str, float], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -71,6 +78,10 @@ class ResultView:
     assessment: str
     debrief: str
     clearing: str
+    status_label: str = ""
+    reason_label: str = ""
+    prediction_label: str = ""
+    advanced: str = ""
 
 
 def number(value: object) -> str:

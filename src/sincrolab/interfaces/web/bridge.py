@@ -54,7 +54,9 @@ def _configuration(value: object) -> portable.SimulationConfigDTO:
 def dispatch(operation: str, payload: object = None) -> object:
     """Return canonical JSON-friendly payloads without presentation rounding."""
     data = _mapping({} if payload is None else payload)
-    if operation == "capabilities":
+    if operation == "learning_content":
+        result = portable.get_learning_content()
+    elif operation == "capabilities":
         result = portable.get_capabilities()
     elif operation == "guided_list":
         result = portable.list_guided_cases()

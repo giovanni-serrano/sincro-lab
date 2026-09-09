@@ -200,8 +200,8 @@ def test_stable_first_swing_explains_reversal_before_crossing() -> None:
     assert evidence["reason"] == "reversal_before_crossing"
     assert evidence["reversal_left_omega_dev_pu"] > 0.0
     assert evidence["reversal_right_omega_dev_pu"] <= 0.0
-    assert "before" in explanation.summary
-    assert "asymptotic or global stability" in " ".join(
+    assert "antes" in explanation.summary
+    assert "estabilidad asintótica ni global" in " ".join(
         explanation.limitations
     )
 
@@ -222,7 +222,7 @@ def test_first_swing_uses_fault_acceleration_only_when_trajectory_is_supplied(
     assert evidence["fault_onset_omega_dev_pu"] == 0.001
     assert evidence["clearing_omega_dev_pu"] == 0.004
     assert evidence["fault_interval_speed_increased"] is True
-    assert "net rotor acceleration" in explanation.summary
+    assert "aceleración neta del rotor" in explanation.summary
 
 
 def test_unstable_first_swing_explains_crossing_with_positive_speed() -> None:
@@ -238,8 +238,8 @@ def test_unstable_first_swing_explains_crossing_with_positive_speed() -> None:
     assert evidence["reason"] == "crossing_before_reversal"
     assert evidence["crossing_left_omega_dev_pu"] > 0.0
     assert evidence["crossing_right_omega_dev_pu"] > 0.0
-    assert "before a rotor-speed reversal" in explanation.summary
-    assert "multimachine" in " ".join(explanation.limitations)
+    assert "antes de una reversión" in explanation.summary
+    assert "multimáquina" in " ".join(explanation.limitations)
 
 
 @pytest.mark.parametrize(
@@ -259,9 +259,9 @@ def test_indeterminate_first_swing_is_never_reclassified(
     evidence = _evidence(explanation)
     assert evidence["status"] == "indeterminate"
     assert evidence["reason"] == reason.value
-    assert "remains INDETERMINATE" in explanation.summary
-    assert "classified STABLE" not in explanation.summary
-    assert "classified UNSTABLE" not in explanation.summary
+    assert "sigue siendo no concluyente" in explanation.summary
+    assert "clasificó como estable" not in explanation.summary
+    assert "clasificó como inestable" not in explanation.summary
 
 
 def test_event_order_ambiguous_without_brackets_preserves_absent_evidence(
@@ -281,7 +281,7 @@ def test_event_order_ambiguous_without_brackets_preserves_absent_evidence(
     assert evidence["reason"] == "event_order_ambiguous"
     assert not any(key.startswith("ambiguous_event_") for key in evidence)
     assert "ambiguous_events_share_sampled_bracket" not in evidence
-    assert "continuous order" not in explanation.summary
+    assert "orden continuo" not in explanation.summary
 
 
 def test_event_order_ambiguous_preserves_both_events_in_one_bracket() -> None:
@@ -300,8 +300,8 @@ def test_event_order_ambiguous_preserves_both_events_in_one_bracket() -> None:
     assert evidence["ambiguous_event_right_index"] == EVENT_BRACKET.right_index
     assert "reversal_left_time_s" not in evidence
     assert "crossing_left_time_s" not in evidence
-    assert "same adjacent-sample bracket" in explanation.summary
-    assert "continuous order is unresolved" in explanation.summary
+    assert "mismo par de muestras adyacentes" in explanation.summary
+    assert "orden continuo no está resuelto" in explanation.summary
 
 
 def test_first_swing_explanation_is_immutable_and_deterministic() -> None:
@@ -332,7 +332,7 @@ def test_h19_explanation_preserves_endpoints_without_a_cct_value() -> None:
     assert evidence["bracket_width_s"] == result.bracket_width_s
     assert "cct_estimate_s" not in evidence
     rendered = render_explanation_text(explanation).lower()
-    assert "exact cct" not in rendered
+    assert "cct exacto" not in rendered
     assert "±" not in rendered
 
 
@@ -345,11 +345,11 @@ def test_h19_time_tolerance_is_only_a_search_stopping_criterion() -> None:
         if item.key == "time_tolerance_s"
     )
     limitations = " ".join(explanation.limitations)
-    assert tolerance.statement == "Stopping criterion used by the bisection search."
-    assert "not physical uncertainty" in limitations
-    assert "not" in limitations
-    assert "integration-error estimate" in limitations
-    assert "convergence with respect to dt_s" in limitations
+    assert tolerance.statement == "Criterio de parada utilizado por la búsqueda por bisección."
+    assert "no incertidumbre física" in limitations
+    assert "no" in limitations
+    assert "estimación del error de integración" in limitations
+    assert "convergencia respecto al paso temporal" in limitations
 
 
 def test_h20_consistent_explanation_keeps_analytic_and_temporal_routes() -> None:
@@ -362,10 +362,10 @@ def test_h20_consistent_explanation_keeps_analytic_and_temporal_routes() -> None
     assert evidence["temporal_stable_clearing_angle_rad"] == 1.0
     assert evidence["temporal_unstable_clearing_angle_rad"] == 1.2
     assert evidence["is_consistent"] is True
-    assert "analytic equal-area" in explanation.summary
-    assert "temporal bracket" in explanation.summary
-    assert "increases confidence" in " ".join(explanation.limitations)
-    assert "not analytic oracles" in " ".join(explanation.limitations)
+    assert "ángulo crítico analítico" in explanation.summary
+    assert "intervalo estable/inestable" in explanation.summary
+    assert "aumenta la confianza" in " ".join(explanation.limitations)
+    assert "no son oráculos analíticos" in " ".join(explanation.limitations)
 
 
 def test_h20_inconsistent_explanation_does_not_hide_disagreement() -> None:
@@ -374,8 +374,8 @@ def test_h20_inconsistent_explanation_does_not_hide_disagreement() -> None:
     explanation = explain_critical_clearing_cross_check(result)
 
     assert _evidence(explanation)["is_consistent"] is False
-    assert "not consistent" in explanation.summary
-    assert "increases confidence" not in explanation.summary
+    assert "no es consistente" in explanation.summary
+    assert "aumenta la confianza" not in explanation.summary
 
 
 def test_comparable_h19_results_allow_time_step_explanation() -> None:
@@ -397,19 +397,18 @@ def test_comparable_h19_results_allow_time_step_explanation() -> None:
     assert evidence["run_2_dt_s"] == 0.025
     assert evidence["brackets_differ"] is True
     assert explanation.summary.startswith(
-        "Across the supplied H19 results with matching retained provenance "
-        "and distinct dt_s values, the endpoint brackets differ."
+        "Entre los resultados suministrados con procedencia conservada coincidente y distintos pasos temporales, los intervalos de extremos difieren."
     )
     limitations = " ".join(explanation.limitations)
-    assert "does not imply that the effect of dt_s is equally small" in limitations
-    assert "endpoint brackets at distinct dt_s values" in limitations
-    assert "are consistent with temporal-resolution sensitivity" in limitations
-    assert "do not establish a software defect" in limitations
-    assert "do not retain the initial search bracket or max_iterations" in limitations
-    assert "cannot establish" in limitations
-    assert "dt_s was the only differing search input" in limitations
-    assert "does not perform a convergence study" in limitations
-    assert "classification" not in render_explanation_text(explanation).lower()
+    assert "no implica que el efecto del paso temporal sea igualmente pequeño" in limitations
+    assert "intervalos de extremos con distintos pasos" in limitations
+    assert "son compatibles con sensibilidad a la resolución temporal" in limitations
+    assert "no demuestran un defecto del software" in limitations
+    assert "no conservan el intervalo inicial de búsqueda ni el límite de iteraciones" in limitations
+    assert "no permiten establecer" in limitations
+    assert "el paso temporal fuera la única entrada de búsqueda diferente" in limitations
+    assert "no realiza un estudio de convergencia" in limitations
+    assert "clasificación" not in render_explanation_text(explanation).lower()
 
 
 def test_time_step_explanation_rejects_different_physical_parameters() -> None:
@@ -482,9 +481,7 @@ def test_equivalent_time_step_inputs_have_order_independent_output() -> None:
     assert forward == reverse
     assert render_explanation_text(forward) == render_explanation_text(reverse)
     assert forward.summary.startswith(
-        "Across the supplied H19 results with matching retained provenance "
-        "and distinct dt_s values, the endpoint brackets are equal at the "
-        "reported float values."
+        "Entre los resultados suministrados con procedencia conservada coincidente y distintos pasos temporales, los intervalos de extremos son iguales en los valores numéricos reportados."
     )
 
 

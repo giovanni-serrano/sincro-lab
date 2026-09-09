@@ -56,7 +56,7 @@ def test_exact_pyodide_no_floating_cdn_or_tracker():
     config = (WEB / "pyodide-config.js").read_text(encoding="utf-8")
     assert re.search(r'PYODIDE_VERSION\s*=\s*"\d+\.\d+\.\d+"', config)
     assert '"0.27.7"' in config
-    assets = "\n".join((WEB / name).read_text(encoding="utf-8") for name in assembly.ASSETS)
+    assets = "\n".join(assembly.asset_path(name, ROOT).read_text(encoding="utf-8") for name in assembly.ASSETS)
     for forbidden in ("latest", "google-analytics", "sentry", "sendBeacon", "XMLHttpRequest", "WebSocket", "localStorage", "indexedDB", "randomUUID"):
         assert forbidden.lower() not in assets.lower()
     assert set(re.findall(r'https://([^/\s"`]+)', assets)) == {"cdn.jsdelivr.net"}
@@ -64,7 +64,7 @@ def test_exact_pyodide_no_floating_cdn_or_tracker():
 
 
 def test_frontend_contains_no_parallel_cases_answers_or_science():
-    source = "\n".join((WEB / name).read_text(encoding="utf-8") for name in assembly.ASSETS)
+    source = "\n".join(assembly.asset_path(name, ROOT).read_text(encoding="utf-8") for name in assembly.ASSETS)
     for summary in portable.list_guided_cases():
         case = portable.get_guided_case(summary.case_id)
         assert case.case_id not in source
@@ -107,7 +107,8 @@ def distribution(tmp_path_factory):
 def test_sdist_carries_explicit_assets_and_wheel_carries_only_python(distribution):
     with tarfile.open(next(distribution.glob("*.tar.gz"))) as archive:
         names = {member.name.split("/",1)[1] for member in archive.getmembers() if member.isfile()}
-    assert {f"web/{name}" for name in (*assembly.ASSETS, "assemble.py")} <= names
+    assert {f"web/{name}" for name in (*assembly.ASSETS, "assemble.py") if name not in assembly.SHARED_ASSETS} <= names
+    assert {f"src/sincrolab/interfaces/assets/{name}" for name in assembly.SHARED_ASSETS} <= names
     assert "src/sincrolab/interfaces/web/bridge.py" in names
     with zipfile.ZipFile(next(distribution.glob("*.whl"))) as archive:
         names = set(archive.namelist())

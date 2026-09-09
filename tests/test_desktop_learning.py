@@ -24,7 +24,7 @@ def execute(value, prediction=None, pre=None):
 def test_catalog_and_prediction_options_have_one_portable_owner():
     value = DesktopController()
     assert [item.case_id for item in value.catalog] == [
-        item.case_id for item in portable.list_guided_cases()
+        item.case_id for item in portable.get_learning_content().cases
     ]
     for preview in value.catalog:
         view = value.select_case(preview.case_id)
@@ -94,7 +94,7 @@ def test_real_guided_baseline_intervention_comparison_explanation_and_hints(case
     assert view.curves[1].omega_dev_pu is result.attempted_evaluation.trajectory.omega_dev_pu
     assert result.attempted_evaluation.explanation.summary in view.explanation
     assert result.debrief_summary in view.debrief
-    assert view.changes[0][0] == result.changed_parameters[0].key
+    assert view.changes[0][0].startswith(source_quantity(result.changed_parameters[0].key).label)
     assert len(value.history) == 2
     assert value.phase == "Comparar"
     if case_id == "controlled-inertia-effect":
@@ -104,7 +104,7 @@ def test_real_guided_baseline_intervention_comparison_explanation_and_hints(case
     if case_id == "late-clearing-bracket":
         bracket = result.critical_clearing_bracket
         assert bracket.stable_t_clear_s < bracket.unstable_t_clear_s
-        assert bracket.time_tolerance_meaning in view.clearing
+        assert "criterio de parada" in view.clearing
         assert result.critical_clearing_explanation.summary in view.clearing
         assert "midpoint" not in bracket.to_dict()
 
@@ -232,3 +232,7 @@ def test_navigation_cannot_reveal_result_before_prediction_and_execution():
             value.go_to(phase)
     value.go_to("Predecir")
     assert value.result_view() is None
+
+
+def source_quantity(key):
+    return next(item for item in portable.get_learning_content().quantities if item.key == key)

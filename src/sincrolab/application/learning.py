@@ -97,24 +97,24 @@ def explain_first_swing(
         ExplanationEvidence(
             key="status",
             value=assessment.status.value,
-            statement="H15 sampled first-swing status.",
+            statement="Diagnóstico de primera oscilación a partir de las muestras.",
         ),
         ExplanationEvidence(
             key="reason",
             value=assessment.reason.value,
-            statement="H15 reason that produced the status.",
+            statement="Razón observada que sustenta el diagnóstico.",
         ),
         ExplanationEvidence(
             key="delta_stable_post_rad",
             value=assessment.delta_stable_post_rad,
             unit="rad",
-            statement="Relevant stable postfault equilibrium angle.",
+            statement="Ángulo de equilibrio estable posfalla relevante.",
         ),
         ExplanationEvidence(
             key="delta_unstable_post_rad",
             value=assessment.delta_unstable_post_rad,
             unit="rad",
-            statement="Relevant unstable postfault equilibrium angle.",
+            statement="Ángulo de equilibrio inestable posfalla relevante.",
         ),
     ]
     fault_clause = ""
@@ -128,10 +128,12 @@ def explain_first_swing(
         )
         evidence.extend(_event_bracket_evidence("reversal", bracket))
         summary = (
-            "The sampled classical SMIB trajectory was classified STABLE for "
-            "the first swing. A positive-speed forward excursion was followed "
-            "by a sampled rotor-speed reversal before the relevant unstable "
-            "postfault equilibrium was crossed."
+            (
+                "La trayectoria muestreada del modelo clásico SMIB se clasificó como estable "
+                "en la primera oscilación. Tras una excursión con desviación de velocidad "
+                "positiva, se observó una reversión antes de cruzar el equilibrio inestable "
+                "posfalla relevante."
+            )
             + fault_clause
         )
     elif assessment.status is FirstSwingStatus.UNSTABLE:
@@ -141,10 +143,12 @@ def explain_first_swing(
         )
         evidence.extend(_event_bracket_evidence("crossing", bracket))
         summary = (
-            "The sampled classical SMIB trajectory was classified UNSTABLE for "
-            "the first swing. It reached the relevant unstable postfault "
-            "equilibrium before a rotor-speed reversal, with positive speed "
-            "at both samples of the crossing bracket."
+            (
+                "La trayectoria muestreada del modelo clásico SMIB se clasificó como "
+                "inestable en la primera oscilación. Alcanzó el equilibrio inestable posfalla"
+                " relevante antes de una reversión, con desviación de velocidad positiva en "
+                "las dos muestras del intervalo de cruce."
+            )
             + fault_clause
         )
     else:
@@ -164,9 +168,11 @@ def explain_first_swing(
                 )
             else:
                 summary += (
-                    " Reversal and unstable-equilibrium crossing were both "
-                    "observed in the same adjacent-sample bracket, so their "
-                    "continuous order is unresolved."
+                    (
+                        " La reversión y el cruce del equilibrio inestable se observaron en "
+                        "el mismo par de muestras adyacentes; su orden continuo no está "
+                        "resuelto."
+                    )
                 )
                 evidence.extend(
                     _event_bracket_evidence(
@@ -180,24 +186,24 @@ def explain_first_swing(
                             key="reversal_observed_in_ambiguous_bracket",
                             value=True,
                             statement=(
-                                "Rotor-speed reversal was observed in the "
-                                "ambiguous sampled bracket."
+                                "Se observó una reversión en el intervalo de muestras ambiguo."
                             ),
                         ),
                         ExplanationEvidence(
                             key="crossing_observed_in_ambiguous_bracket",
                             value=True,
                             statement=(
-                                "Unstable-equilibrium crossing was observed "
-                                "in the ambiguous sampled bracket."
+                                (
+                                    "Se observó el cruce del equilibrio inestable en el "
+                                    "intervalo de muestras ambiguo."
+                                )
                             ),
                         ),
                         ExplanationEvidence(
                             key="ambiguous_events_share_sampled_bracket",
                             value=True,
                             statement=(
-                                "Both candidate events share the same pair "
-                                "of adjacent samples."
+                                "Los dos eventos candidatos comparten el mismo par de muestras adyacentes."
                             ),
                         ),
                     )
@@ -212,16 +218,22 @@ def explain_first_swing(
 
     return PedagogicalExplanation(
         kind=ExplanationKind.FIRST_SWING,
-        title="Sampled first-swing assessment",
+        title="Interpretación de la primera oscilación",
         summary=summary,
         evidence=tuple(evidence),
         limitations=(
-            "The status applies only to the sampled forward first swing; it "
-            "does not establish asymptotic or global stability.",
-            "Event brackets contain adjacent trajectory samples; they are not "
-            "interpolated continuous-event times.",
-            "The interpretation is for the classical SMIB model and is not a "
-            "general multimachine-system conclusion.",
+            (
+                "El estado corresponde solo a la primera excursión creciente muestreada; no "
+                "demuestra estabilidad asintótica ni global."
+            ),
+            (
+                "Los intervalos de evento contienen muestras adyacentes de la trayectoria; no"
+                " son tiempos continuos interpolados."
+            ),
+            (
+                "La interpretación corresponde al modelo clásico SMIB y no es una conclusión "
+                "general para sistemas multimáquina."
+            ),
         ),
         concepts=(
             LearningConcept.ROTOR_ANGLE,
@@ -241,75 +253,80 @@ def explain_critical_clearing_time(
             key="stable_t_clear_s",
             value=result.stable_t_clear_s,
             unit="s",
-            statement="Lower endpoint classified STABLE by H15.",
+            statement="Extremo inferior con diagnóstico estable de primera oscilación.",
         ),
         ExplanationEvidence(
             key="stable_status",
             value=result.stable_evaluation.first_swing.status.value,
-            statement="First-swing status at the lower endpoint.",
+            statement="Diagnóstico de primera oscilación en el extremo inferior.",
         ),
         ExplanationEvidence(
             key="stable_reason",
             value=result.stable_evaluation.first_swing.reason.value,
-            statement="H15 reason at the lower endpoint.",
+            statement="Razón del diagnóstico en el extremo inferior.",
         ),
         ExplanationEvidence(
             key="unstable_t_clear_s",
             value=result.unstable_t_clear_s,
             unit="s",
-            statement="Upper endpoint classified UNSTABLE by H15.",
+            statement="Extremo superior con diagnóstico inestable de primera oscilación.",
         ),
         ExplanationEvidence(
             key="unstable_status",
             value=result.unstable_evaluation.first_swing.status.value,
-            statement="First-swing status at the upper endpoint.",
+            statement="Diagnóstico de primera oscilación en el extremo superior.",
         ),
         ExplanationEvidence(
             key="unstable_reason",
             value=result.unstable_evaluation.first_swing.reason.value,
-            statement="H15 reason at the upper endpoint.",
+            statement="Razón del diagnóstico en el extremo superior.",
         ),
         ExplanationEvidence(
             key="bracket_width_s",
             value=result.bracket_width_s,
             unit="s",
-            statement="Width of the final stable-to-unstable time bracket.",
+            statement="Ancho del intervalo temporal final entre extremos estable e inestable.",
         ),
         ExplanationEvidence(
             key="time_tolerance_s",
             value=result.time_tolerance_s,
             unit="s",
-            statement="Stopping criterion used by the bisection search.",
+            statement="Criterio de parada utilizado por la búsqueda por bisección.",
         ),
         ExplanationEvidence(
             key="iterations",
             value=result.iterations,
-            statement="Number of midpoint evaluations performed by H19.",
+            statement="Número de evaluaciones de puntos medios realizadas por la búsqueda.",
         ),
         ExplanationEvidence(
             key="dt_s",
             value=_result_dt_s(result),
             unit="s",
-            statement="Time step used by both endpoint simulations.",
+            statement="Paso temporal utilizado por las simulaciones de ambos extremos.",
         ),
     )
     return PedagogicalExplanation(
         kind=ExplanationKind.CRITICAL_CLEARING_TIME,
-        title="Critical-clearing transition bracket",
+        title="Intervalo crítico de tiempo de despeje",
         summary=(
-            "With the supplied numerical configuration, H19 found a STABLE "
-            "first-swing result at the lower clearing-time endpoint and an "
-            "UNSTABLE result at the upper endpoint. The transition is bounded "
-            "between those evaluated times under the search procedure used."
+            (
+                "Con la configuración numérica suministrada, la búsqueda encontró una primera"
+                " oscilación estable en el extremo inferior de despeje y una inestable en el "
+                "extremo superior. La transición queda acotada entre esos tiempos evaluados "
+                "bajo el procedimiento de búsqueda utilizado."
+            )
         ),
         evidence=evidence,
         limitations=(
-            "time_tolerance_s is a bisection stopping criterion, not physical "
-            "uncertainty or an integration-error estimate.",
-            "The bracket midpoint is only a numerical summary of the bracket "
-            "and must not be presented as the critical clearing time.",
-            "A narrow bracket does not establish convergence with respect to "
-            "dt_s.",
+            (
+                "La tolerancia de búsqueda es un criterio de parada de bisección, no "
+                "incertidumbre física ni una estimación del error de integración."
+            ),
+            (
+                "El punto medio es solo un resumen numérico del intervalo y no debe "
+                "presentarse como el tiempo crítico de despeje."
+            ),
+            "Un intervalo estrecho no demuestra convergencia respecto al paso temporal.",
         ),
         concepts=(
             LearningConcept.CLEARING_TIME,
@@ -324,43 +341,47 @@ def explain_critical_clearing_cross_check(
 ) -> PedagogicalExplanation:
     """Explain H20's comparison without merging its two scientific routes."""
     consistency_statement = (
-        "The analytic critical angle is consistent with the temporal endpoint "
-        "angles under the stated angular comparison tolerance."
+        (
+            "El ángulo crítico analítico es consistente con los ángulos de los extremos "
+            "temporales bajo la tolerancia angular de comparación indicada."
+        )
         if result.is_consistent
-        else "The analytic critical angle is not consistent with the temporal "
-        "endpoint angles under the stated angular comparison tolerance."
+        else (
+            "El ángulo crítico analítico no es consistente con los ángulos de los extremos "
+            "temporales bajo la tolerancia angular de comparación indicada."
+        )
     )
     evidence = (
         ExplanationEvidence(
             key="analytic_critical_angle_rad",
             value=result.critical_angle_rad,
             unit="rad",
-            statement="H17 equal-area critical angle from the analytic route.",
+            statement="Ángulo crítico por áreas iguales obtenido por la ruta analítica.",
         ),
         ExplanationEvidence(
             key="temporal_stable_t_clear_s",
             value=result.clearing_time_result.stable_t_clear_s,
             unit="s",
-            statement="H19 temporal bracket's STABLE endpoint time.",
+            statement="Tiempo del extremo estable del intervalo temporal.",
         ),
         ExplanationEvidence(
             key="temporal_unstable_t_clear_s",
             value=result.clearing_time_result.unstable_t_clear_s,
             unit="s",
-            statement="H19 temporal bracket's UNSTABLE endpoint time.",
+            statement="Tiempo del extremo inestable del intervalo temporal.",
         ),
         ExplanationEvidence(
             key="temporal_stable_clearing_angle_rad",
             value=result.stable_clearing_angle_rad,
             unit="rad",
-            statement="Clearing angle sampled by the stable endpoint trajectory.",
+            statement="Ángulo de despeje muestreado en la trayectoria del extremo estable.",
         ),
         ExplanationEvidence(
             key="temporal_unstable_clearing_angle_rad",
             value=result.unstable_clearing_angle_rad,
             unit="rad",
             statement=(
-                "Clearing angle sampled by the unstable endpoint trajectory."
+                "Ángulo de despeje muestreado en la trayectoria del extremo inestable."
             ),
         ),
         ExplanationEvidence(
@@ -368,7 +389,7 @@ def explain_critical_clearing_cross_check(
             value=result.stable_angle_gap_rad,
             unit="rad",
             statement=(
-                "Analytic angle minus the stable endpoint clearing angle."
+                "Ángulo analítico menos ángulo de despeje del extremo estable."
             ),
         ),
         ExplanationEvidence(
@@ -376,14 +397,14 @@ def explain_critical_clearing_cross_check(
             value=result.unstable_angle_gap_rad,
             unit="rad",
             statement=(
-                "Unstable endpoint clearing angle minus the analytic angle."
+                "Ángulo de despeje del extremo inestable menos ángulo analítico."
             ),
         ),
         ExplanationEvidence(
             key="temporal_angle_bracket_width_rad",
             value=result.clearing_angle_bracket_width_rad,
             unit="rad",
-            statement="Width between temporal endpoint clearing angles.",
+            statement="Separación entre los ángulos de despeje de los extremos temporales.",
         ),
         ExplanationEvidence(
             key="is_consistent",
@@ -394,34 +415,43 @@ def explain_critical_clearing_cross_check(
             key="angle_tolerance_rad",
             value=result.angle_tolerance_rad,
             unit="rad",
-            statement="Angular allowance used only for the H20 comparison.",
+            statement="Tolerancia angular utilizada únicamente para esta comparación.",
         ),
     )
     summary = (
-        "H20 kept two routes separate: H17 produced an analytic equal-area "
-        "critical angle, while H19 produced a stable-to-unstable temporal "
-        "bracket whose endpoint trajectories supplied clearing angles. "
+        (
+            "La comparación conserva dos rutas separadas: áreas iguales produce un ángulo "
+            "crítico analítico; la búsqueda temporal produce un intervalo estable/inestable "
+            "cuyas trayectorias aportan los ángulos de despeje. "
+        )
         + consistency_statement
     )
     confidence_limitation = (
-        "Observed agreement increases confidence in this configured case; it "
-        "does not establish universal model validity."
+        (
+            "La concordancia observada aumenta la confianza en este caso configurado; no "
+            "demuestra validez universal del modelo."
+        )
         if result.is_consistent
-        else "The disagreement remains visible for investigation; H24 does "
-        "not reconcile or override either scientific route."
+        else (
+            "La discrepancia permanece visible para investigarla; la explicación no "
+            "reconcilia ni sustituye ninguna de las dos rutas científicas."
+        )
     )
     return PedagogicalExplanation(
         kind=ExplanationKind.CRITICAL_CLEARING_CROSS_CHECK,
-        title="Equal-area and temporal cross-check",
+        title="Comparación de áreas iguales y búsqueda temporal",
         summary=summary,
         evidence=evidence,
         limitations=(
-            "The comparison applies to the compatible classical zero-damping "
-            "equal-area case.",
-            "The analytic route did not set or alter the temporal search "
-            "endpoints.",
-            "The temporal endpoints remain RK4 trajectory evidence and are "
-            "not analytic oracles.",
+            (
+                "La comparación se aplica al caso clásico compatible con áreas iguales y "
+                "amortiguamiento nulo."
+            ),
+            "La ruta analítica no fija ni modifica los extremos de la búsqueda temporal.",
+            (
+                "Los extremos temporales siguen siendo evidencia de trayectorias RK4; no son "
+                "oráculos analíticos."
+            ),
             confidence_limitation,
         ),
         concepts=(
@@ -470,26 +500,26 @@ def explain_time_step_sensitivity(
                     key=f"{prefix}_dt_s",
                     value=dt_s,
                     unit="s",
-                    statement=f"Time step for comparison run {index}.",
+                    statement=f"Paso temporal de la ejecución comparada {index}.",
                 ),
                 ExplanationEvidence(
                     key=f"{prefix}_stable_t_clear_s",
                     value=bracket[0],
                     unit="s",
-                    statement=f"Stable H19 endpoint for comparison run {index}.",
+                    statement=f"Extremo estable de la ejecución comparada {index}.",
                 ),
                 ExplanationEvidence(
                     key=f"{prefix}_unstable_t_clear_s",
                     value=bracket[1],
                     unit="s",
-                    statement=f"Unstable H19 endpoint for comparison run {index}.",
+                    statement=f"Extremo inestable de la ejecución comparada {index}.",
                 ),
                 ExplanationEvidence(
                     key=f"{prefix}_bracket_width_s",
                     value=result.bracket_width_s,
                     unit="s",
                     statement=(
-                        f"H19 stopping bracket width for comparison run {index}."
+                        f"Ancho del intervalo de parada de la ejecución comparada {index}."
                     ),
                 ),
             )
@@ -500,38 +530,51 @@ def explain_time_step_sensitivity(
         ExplanationEvidence(
             key="brackets_differ",
             value=brackets_differ,
-            statement="Whether supplied H19 endpoint pairs differ across dt_s.",
+            statement="Indica si los pares de extremos suministrados difieren entre pasos temporales.",
         )
     )
     observed = (
-        "Across the supplied H19 results with matching retained provenance "
-        "and distinct dt_s values, the endpoint brackets differ."
+        (
+            "Entre los resultados suministrados con procedencia conservada coincidente y "
+            "distintos pasos temporales, los intervalos de extremos difieren."
+        )
         if brackets_differ
-        else "Across the supplied H19 results with matching retained "
-        "provenance and distinct dt_s values, the endpoint brackets are equal "
-        "at the reported float values."
+        else (
+            "Entre los resultados suministrados con procedencia conservada coincidente y "
+            "distintos pasos temporales, los intervalos de extremos son iguales en los "
+            "valores numéricos reportados."
+        )
     )
     return PedagogicalExplanation(
         kind=ExplanationKind.TIME_STEP_SENSITIVITY,
-        title="Time-step sensitivity of temporal brackets",
+        title="Sensibilidad de los intervalos al paso temporal",
         summary=(
             observed
-            + " Search-bracket width and sensitivity to temporal resolution "
-            "are separate numerical properties."
+            + (
+                " El ancho del intervalo de búsqueda y la sensibilidad a la resolución "
+                "temporal son propiedades numéricas distintas."
+            )
         ),
         evidence=tuple(evidence),
         limitations=(
-            "A small H19 bracket width does not imply that the effect of dt_s "
-            "is equally small.",
-            "Differences between H19 endpoint brackets at distinct dt_s values "
-            "are consistent with temporal-resolution sensitivity; those "
-            "differences alone do not establish a software defect.",
-            "H19 results do not retain the initial search bracket or "
-            "max_iterations, so this explanation cannot establish from the "
-            "result objects alone that dt_s was the only differing search "
-            "input.",
-            "This explanation compares supplied results and does not perform a "
-            "convergence study or rerun the scientific solvers.",
+            (
+                "Un ancho de intervalo pequeño no implica que el efecto del paso temporal sea"
+                " igualmente pequeño."
+            ),
+            (
+                "Las diferencias entre intervalos de extremos con distintos pasos son "
+                "compatibles con sensibilidad a la resolución temporal; por sí solas no "
+                "demuestran un defecto del software."
+            ),
+            (
+                "Los resultados no conservan el intervalo inicial de búsqueda ni el límite de"
+                " iteraciones; estos objetos por sí solos no permiten establecer que el paso "
+                "temporal fuera la única entrada de búsqueda diferente."
+            ),
+            (
+                "Esta explicación compara resultados suministrados; no realiza un estudio de "
+                "convergencia ni vuelve a ejecutar los integradores."
+            ),
         ),
         concepts=(
             LearningConcept.TIME_STEP,
@@ -543,16 +586,16 @@ def explain_time_step_sensitivity(
 
 def render_explanation_text(explanation: PedagogicalExplanation) -> str:
     """Render a deterministic plain-text view of structured evidence."""
-    lines = [explanation.title, explanation.summary, "Evidence:"]
+    lines = [explanation.title, explanation.summary, "Evidencia avanzada:"]
     for item in explanation.evidence:
         unit_suffix = f" {item.unit}" if item.unit is not None else ""
         lines.append(
             f"- {item.key}={item.value!r}{unit_suffix}: {item.statement}"
         )
-    lines.append("Limitations:")
+    lines.append("Limitaciones:")
     lines.extend(f"- {limitation}" for limitation in explanation.limitations)
     lines.append(
-        "Concepts: "
+        "Conceptos (identificadores técnicos): "
         + ", ".join(concept.value for concept in explanation.concepts)
     )
     return "\n".join(lines)
@@ -572,23 +615,23 @@ def _event_bracket_evidence(
     bracket: FirstSwingEventBracket,
 ) -> tuple[ExplanationEvidence, ...]:
     values: tuple[tuple[str, EvidenceValue, str | None, str], ...] = (
-        ("left_index", bracket.left_index, None, "Left sample index"),
-        ("right_index", bracket.right_index, None, "Right sample index"),
-        ("left_time_s", bracket.left_time_s, "s", "Left sample time"),
-        ("right_time_s", bracket.right_time_s, "s", "Right sample time"),
-        ("left_delta_rad", bracket.left_delta_rad, "rad", "Left rotor angle"),
-        ("right_delta_rad", bracket.right_delta_rad, "rad", "Right rotor angle"),
+        ("left_index", bracket.left_index, None, "Índice de la muestra izquierda"),
+        ("right_index", bracket.right_index, None, "Índice de la muestra derecha"),
+        ("left_time_s", bracket.left_time_s, "s", "Tiempo de la muestra izquierda"),
+        ("right_time_s", bracket.right_time_s, "s", "Tiempo de la muestra derecha"),
+        ("left_delta_rad", bracket.left_delta_rad, "rad", "Ángulo del rotor en la muestra izquierda"),
+        ("right_delta_rad", bracket.right_delta_rad, "rad", "Ángulo del rotor en la muestra derecha"),
         (
             "left_omega_dev_pu",
             bracket.left_omega_dev_pu,
             "pu",
-            "Left speed deviation",
+            "Desviación de velocidad en la muestra izquierda",
         ),
         (
             "right_omega_dev_pu",
             bracket.right_omega_dev_pu,
             "pu",
-            "Right speed deviation",
+            "Desviación de velocidad en la muestra derecha",
         ),
     )
     return tuple(
@@ -596,7 +639,7 @@ def _event_bracket_evidence(
             key=f"{prefix}_{key}",
             value=value,
             unit=unit,
-            statement=f"{statement} of the event bracket.",
+            statement=f"{statement} del intervalo de evento.",
         )
         for key, value, unit, statement in values
     )
@@ -605,22 +648,27 @@ def _event_bracket_evidence(
 def _indeterminate_summary(reason: FirstSwingReason) -> str:
     if reason is FirstSwingReason.NO_POSITIVE_EXCURSION:
         detail = (
-            "no positive-speed excursion was present in the assessed "
-            "post-clearing samples"
+            (
+                "no hubo una excursión con desviación de velocidad positiva en las muestras "
+                "posdespeje examinadas"
+            )
         )
     elif reason is FirstSwingReason.HORIZON_ENDED_BEFORE_EVENT:
         detail = (
-            "the sampled horizon ended before either reversal or unstable-"
-            "equilibrium crossing was observed"
+            (
+                "el horizonte muestreado terminó antes de observar una reversión o un cruce "
+                "del equilibrio inestable"
+            )
         )
     else:
         detail = (
-            "the sampled evidence did not establish whether reversal or "
-            "unstable-equilibrium crossing occurred first"
+            (
+                "las muestras no establecen si ocurrió primero la reversión o el cruce del "
+                "equilibrio inestable"
+            )
         )
     return (
-        "The sampled classical SMIB first swing remains INDETERMINATE because "
-        f"{detail}. H24 preserves that scientific outcome."
+        f"La primera oscilación muestreada del modelo clásico SMIB sigue siendo no concluyente porque {detail}. Se conserva ese resultado científico."
     )
 
 
@@ -646,27 +694,30 @@ def _fault_interval_evidence(
             key="fault_onset_omega_dev_pu",
             value=fault_speed_pu,
             unit="pu",
-            statement="Sampled speed deviation at fault onset.",
+            statement="Desviación de velocidad muestreada al inicio de la falla.",
         ),
         ExplanationEvidence(
             key="clearing_omega_dev_pu",
             value=clearing_speed_pu,
             unit="pu",
-            statement="Sampled speed deviation at clearing.",
+            statement="Desviación de velocidad muestreada en el despeje.",
         ),
         ExplanationEvidence(
             key="fault_interval_speed_increased",
             value=speed_increased,
             statement=(
-                "Whether sampled speed deviation increased from fault onset "
-                "to clearing."
+                "Indica si la desviación de velocidad aumentó entre el inicio de falla y el despeje."
             ),
         ),
     )
     clause = (
-        " During the modeled fault interval, sampled speed deviation "
-        "increased, which is trajectory evidence of net rotor acceleration "
-        "across that interval."
+        (
+            " Durante el intervalo de falla modelado aumentó la desviación de velocidad "
+            "muestreada, lo que aporta evidencia de aceleración neta del rotor a lo largo de "
+            "ese intervalo. Según la ecuación de oscilación, este cambio acumula el efecto "
+            "del balance de potencia neto; no afirma que ese balance fuera positivo en cada "
+            "instante."
+        )
         if speed_increased
         else ""
     )

@@ -126,8 +126,8 @@ def test_hints_are_progressive_and_solution_is_optional() -> None:
     assert hidden.revealed_solution is None
     assert not hidden.solution_revealed
     assert revealed.revealed_solution == case.pedagogical_solution
-    assert "One pedagogical solution" in revealed.revealed_solution.explanation
-    assert "not" in revealed.revealed_solution.limitation
+    assert "Una solución pedagógica posible" in revealed.revealed_solution.explanation
+    assert "no" in revealed.revealed_solution.limitation
 
 
 def test_attempt_retains_prediction_baseline_attempt_and_h24_explanations() -> None:
@@ -163,9 +163,9 @@ def test_late_clearing_uses_real_h15_and_h19_results() -> None:
         "time_tolerance_s",
     }
     combined = " ".join((explanation.summary, *explanation.limitations)).lower()
-    assert "exact cct" not in combined
-    assert "stopping criterion" in combined
-    assert "uncertainty" in combined
+    assert "cct exacto" not in combined
+    assert "criterio de parada" in combined
+    assert "incertidumbre" in combined
 
 
 def test_inertia_case_changes_only_h_and_reports_observed_metrics() -> None:
@@ -180,9 +180,9 @@ def test_inertia_case_changes_only_h_and_reports_observed_metrics() -> None:
         record.scientific_comparison.attempted_max_delta_rad
     )
     text = " ".join((record.debrief.summary, *record.debrief.limitations)).lower()
-    assert "only h_s changed" in text
-    assert "higher inertia always" in text
-    assert "does not imply" in text
+    assert "solo cambió la inercia h" in text
+    assert "una mayor inercia siempre" in text
+    assert "no implica" in text
 
 
 def test_first_swing_case_preserves_real_stable_and_unstable_reasons() -> None:
@@ -257,8 +257,8 @@ def test_concept_scoring_and_pre_post_are_local_and_deterministic() -> None:
     ) == (2, 2)
     assert record.pre_post_score.local_delta == 2
     limitation = record.pre_post_score.limitation.lower()
-    assert "does not establish educational effectiveness" in limitation
-    assert "student learned" not in limitation
+    assert "no demuestra eficacia educativa" in limitation
+    assert "el estudiante aprendió" not in limitation
 
 
 def test_absent_pre_post_assessment_remains_not_assessed() -> None:

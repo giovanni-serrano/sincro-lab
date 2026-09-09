@@ -20,6 +20,7 @@ from sincrolab.application.learning import (
     explain_critical_clearing_time,
     explain_first_swing,
 )
+from sincrolab.application.learning_content import meaning, quantity
 from sincrolab.models import SMIBInitialState, SMIBParameters, SMIBTransientNetwork
 
 
@@ -347,8 +348,7 @@ def run_guided_attempt(
             post_score=post_score,
             local_delta=post_score.correct - pre_score.correct,
             limitation=(
-                "A pre/post score change for one local attempt does not establish "
-                "educational effectiveness."
+                "Un cambio de puntuación pre/post en un intento local no demuestra eficacia educativa."
             ),
         )
     debrief = _build_debrief(
@@ -468,9 +468,12 @@ def _evaluate_goal(
     if goal.kind is GuidedGoalKind.FIRST_SWING_STATUS:
         achieved = comparison.attempted_status is goal.target_status
         evidence = (
-            "The attempted H15 first-swing status matches the guided target."
+            "El diagnóstico de primera oscilación del intento cumple el objetivo del caso."
             if achieved
-            else "The attempted H15 first-swing status does not match the guided target."
+            else (
+                "El diagnóstico de primera oscilación del intento todavía no cumple el "
+                "objetivo del caso."
+            )
         )
     else:
         achieved = (
@@ -479,9 +482,9 @@ def _evaluate_goal(
             != comparison.baseline_max_abs_omega_dev_pu
         )
         evidence = (
-            "The sampled trajectory metrics differ from the baseline."
+            "Las métricas de la trayectoria muestreada difieren de la configuración inicial."
             if achieved
-            else "The sampled trajectory metrics do not differ from the baseline."
+            else "Las métricas de la trayectoria muestreada no difieren de la configuración inicial."
         )
     return GoalEvaluation(
         achieved=achieved,
@@ -502,38 +505,66 @@ def _build_debrief(
     if guided_case.kind is GuidedCaseKind.INERTIA_EFFECT:
         if tuple(change.key for change in changes) == ("H_s",):
             summary = (
-                "Only H_s changed in this controlled modeled comparison; the "
-                "reported trajectory metrics show the response observed for this case."
+                (
+                    "Solo cambió la inercia H en esta comparación controlada del modelo; las "
+                    "métricas reportadas muestran la respuesta observada para este caso."
+                )
             )
         else:
             summary = (
-                "No exclusive effect is attributed to H_s because this attempt did "
-                "not contain exactly one recorded H_s change."
+                (
+                    "No se atribuye un efecto exclusivo a la inercia H porque el intento no "
+                    "registra exactamente un cambio de esa variable."
+                )
             )
         limitations = (
-            "This single modeled comparison does not imply that higher inertia always "
-            "produces first-swing stability.",
-            "The result is specific to the classical SMIB model and supplied event.",
+            (
+                "Esta comparación aislada no implica que una mayor inercia siempre produzca "
+                "estabilidad de primera oscilación."
+            ),
+            "El resultado es específico del modelo clásico SMIB y del evento suministrado.",
         )
     elif guided_case.kind is GuidedCaseKind.LATE_CLEARING:
         summary = (
-            "The attempted clearing time is evaluated by H18 and its sampled "
-            "first-swing outcome is interpreted by H24."
+            (
+                "El instante de despeje del intento determina cuándo comienza la posfalla. Su"
+                " resultado de primera oscilación se interpreta con las muestras calculadas."
+            )
         )
         limitations = (
-            "H19 bounds a transition between stable and unstable endpoints; it does "
-            "not provide an exact CCT.",
-            "time_tolerance_s is a search stopping criterion, not physical uncertainty.",
+            (
+                "La búsqueda acota una transición entre extremos estable e inestable; no "
+                "proporciona un CCT exacto."
+            ),
+            "La tolerancia de búsqueda es un criterio de parada, no incertidumbre física.",
         )
     else:
         summary = (
-            "H15 supplies the attempted status, reason, and event evidence; H24 "
-            "interprets them without changing the classification."
+            (
+                "El diagnóstico conserva el estado, la razón y la evidencia de eventos del "
+                "intento. La explicación los interpreta sin modificar la clasificación."
+            )
         )
         limitations = (
-            "The classification concerns the first swing of one sampled classical "
-            "SMIB trajectory, not global or multimachine stability.",
+            (
+                "La clasificación corresponde a la primera oscilación de una trayectoria "
+                "clásica SMIB muestreada, no a estabilidad global o multimáquina."
+            ),
         )
+    # These values come from the retained comparison, never from a UI estimate.
+    changed_text = "; ".join(
+        f"{quantity(change.key).label}: {change.baseline_value:g} → "
+        f"{change.attempted_value:g} {change.unit}"
+        for change in changes
+    ) or "Sin cambios de parámetros respecto a la configuración inicial."
+    summary += (
+        f" {changed_text} Diagnóstico inicial: {meaning(comparison.baseline_status.value).label}; "
+        f"intento: {meaning(comparison.attempted_status.value).label}. "
+        f"Máximo ángulo en la ventana: {comparison.baseline_max_delta_rad:.6g} → "
+        f"{comparison.attempted_max_delta_rad:.6g} rad. Máxima desviación absoluta "
+        f"de velocidad: {comparison.baseline_max_abs_omega_dev_pu:.6g} → "
+        f"{comparison.attempted_max_abs_omega_dev_pu:.6g} pu."
+    )
     return GuidedDebrief(
         summary=summary,
         baseline_explanation=baseline_explanation,
@@ -568,23 +599,25 @@ def _questions() -> tuple[ConceptQuestion, ...]:
         ConceptQuestion(
             question_id="accelerating_power",
             prompt=(
-                "When net accelerating power is positive during the disturbance, "
-                "what is the immediate effect?"
+                (
+                    "Cuando la potencia acelerante neta es positiva durante la perturbación, "
+                    "¿cuál es el efecto inmediato?"
+                )
             ),
             options=(
-                ConceptOption("a", "Rotor speed deviation tends to increase."),
-                ConceptOption("b", "Rotor angle becomes globally stable by definition."),
-                ConceptOption("c", "The H19 bracket becomes exact."),
+                ConceptOption("a", "La desviación de velocidad del rotor tiende a aumentar."),
+                ConceptOption("b", "El ángulo del rotor se vuelve globalmente estable por definición."),
+                ConceptOption("c", "El intervalo crítico de despeje se vuelve exacto."),
             ),
             correct_option_id="a",
         ),
         ConceptQuestion(
             question_id="first_swing_evidence",
-            prompt="Which evidence supports a sampled stable first-swing classification?",
+            prompt="¿Qué evidencia respalda una primera oscilación muestreada estable?",
             options=(
-                ConceptOption("a", "Crossing before reversal."),
-                ConceptOption("b", "Reversal before crossing."),
-                ConceptOption("c", "A small H19 search tolerance alone."),
+                ConceptOption("a", "Cruce antes de la reversión."),
+                ConceptOption("b", "Reversión antes del cruce."),
+                ConceptOption("c", "Solo una tolerancia pequeña de búsqueda temporal."),
             ),
             correct_option_id="b",
         ),
@@ -595,13 +628,18 @@ def _late_clearing_case() -> GuidedCase:
     return GuidedCase(
         case_id="late-clearing-bracket",
         kind=GuidedCaseKind.LATE_CLEARING,
-        title="Clearing time and the temporal transition bracket",
+        title="Efecto del tiempo de despeje",
         context=(
-            "A synthetic classical SMIB disturbance is cleared at a selectable time."
+            (
+                "Una perturbación sintética del modelo clásico SMIB se despeja en un instante"
+                " que puedes modificar."
+            )
         ),
         learning_objective=(
-            "Relate early and late clearing to H15 outcomes and interpret H19 as a "
-            "stable-to-unstable bracket."
+            (
+                "Relaciona despejes tempranos y tardíos con la primera oscilación e "
+                "interpreta el intervalo entre extremos estable e inestable."
+            )
         ),
         difficulty=GuidedCaseDifficulty.INTRODUCTORY,
         baseline_config=_base_config(t_clear_s=0.35),
@@ -609,26 +647,39 @@ def _late_clearing_case() -> GuidedCase:
             GuidedGoalKind.FIRST_SWING_STATUS,
             FirstSwingStatus.STABLE,
         ),
-        prediction_prompt="Predict the attempted sampled first-swing outcome.",
+        prediction_prompt=(
+            "Predice el resultado de la primera oscilación muestreada para la configuración "
+            "que vas a ejecutar."
+        ),
         prediction_options=("stable", "unstable", "indeterminate"),
         editable_parameters=(
             EditableParameter(
-                "t_clear_s", "Clearing time", "s", 0.15, 0.4, 0.35
+                "t_clear_s", quantity("t_clear_s").label, "s", 0.15, 0.4, 0.35
             ),
         ),
         hints=(
-            "Compare how long accelerating power acts before the network is cleared.",
-            "Use the H19 stable and unstable endpoints as bounds, not as one exact time.",
+            "Compara cuánto tiempo actúa el balance acelerante antes de despejar la falla.",
+            (
+                "Usa los extremos estable e inestable de la búsqueda como límites de un "
+                "intervalo, no como un tiempo exacto."
+            ),
         ),
         pedagogical_solution=PedagogicalSolution(
             settings=(SolutionSetting("t_clear_s", 0.2, "s"),),
             explanation=(
-                "One pedagogical solution is to try the modeled clearing time 0.2 s "
-                "and inspect the H15 result."
+                (
+                    "Una solución pedagógica posible es probar un despeje a 0.2 s y examinar "
+                    "el diagnóstico. Al terminar antes el intervalo de falla, cambia el "
+                    "estado con que comienza la posfalla; comprueba su efecto en la velocidad"
+                    " y el orden de eventos calculados."
+                )
             ),
             limitation=(
-                "This is one synthetic educational intervention, not a protection "
-                "setting or recommendation for a real system."
+                (
+                    "Es una intervención educativa sintética posible, no un ajuste de "
+                    "protección ni una recomendación para una red real. Otras combinaciones "
+                    "pueden producir respuestas distintas."
+                )
             ),
         ),
         conceptual_questions=_questions(),
@@ -638,8 +689,11 @@ def _late_clearing_case() -> GuidedCase:
             LearningConcept.ROTOR_ANGLE,
         ),
         provenance=(
-            "Synthetic public SMIB input family used by SincroLab reference cases; "
-            "scientific outcomes are recomputed through H18/H19."
+            (
+                "Familia sintética pública de entradas SMIB utilizada por los casos de "
+                "referencia de SincroLab; las trayectorias y los extremos críticos se "
+                "recalculan con el mismo núcleo."
+            )
         ),
     )
 
@@ -648,36 +702,55 @@ def _inertia_case() -> GuidedCase:
     return GuidedCase(
         case_id="controlled-inertia-effect",
         kind=GuidedCaseKind.INERTIA_EFFECT,
-        title="Controlled effect of inertia",
+        title="Efecto controlado de la inercia",
         context=(
-            "Two executions retain the same machine input, network, event, initial "
-            "state, horizon, and time step while H_s may change."
+            (
+                "Dos ejecuciones conservan potencia, amortiguamiento, frecuencia, red, "
+                "evento, estado inicial, horizonte y paso temporal; solo puede cambiar la "
+                "inercia H."
+            )
         ),
         learning_objective=(
-            "Observe how changing only H_s changes sampled trajectory evidence in "
-            "this modeled case."
+            (
+                "Observa cómo cambiar únicamente la inercia H modifica la evidencia de las "
+                "trayectorias en este caso modelado."
+            )
         ),
         difficulty=GuidedCaseDifficulty.INTERMEDIATE,
         baseline_config=_base_config(H_s=3.5, t_clear_s=0.28),
         goal=GuidedGoal(GuidedGoalKind.OBSERVE_TRAJECTORY_CHANGE),
-        prediction_prompt="Predict how the sampled response will compare with baseline.",
+        prediction_prompt=(
+            "Predice cómo se comparará la respuesta muestreada con la configuración inicial. "
+            "Después contrasta los máximos de ángulo y desviación absoluta de velocidad; esta"
+            " predicción no asigna un estado de estabilidad."
+        ),
         prediction_options=("smaller excursion", "larger excursion", "no change"),
         editable_parameters=(
-            EditableParameter("H_s", "Inertia constant", "s", 2.0, 8.0, 3.5),
+            EditableParameter("H_s", quantity("H_s").label, "s", 2.0, 8.0, 3.5),
         ),
         hints=(
-            "Hold the event and all other retained inputs fixed while changing H_s.",
-            "Compare maximum rotor angle and absolute speed deviation; do not assume a status.",
+            "Mantén fijos el evento y las demás entradas mientras exploras la respuesta del rotor.",
+            (
+                "Compara el máximo ángulo del rotor y la máxima desviación absoluta de "
+                "velocidad de la ventana; no presupongas un estado de estabilidad."
+            ),
         ),
         pedagogical_solution=PedagogicalSolution(
             settings=(SolutionSetting("H_s", 6.0, "s"),),
             explanation=(
-                "One pedagogical solution is to try H_s = 6.0 s and compare the "
-                "sampled trajectory metrics with the baseline."
+                (
+                    "Una solución pedagógica posible es probar H = 6.0 s y comparar las "
+                    "métricas muestreadas con la configuración inicial. H divide el balance "
+                    "neto en la ecuación de aceleración; compara ambas trayectorias para "
+                    "verificar el efecto de esta intervención."
+                )
             ),
             limitation=(
-                "This modeled example does not establish that higher inertia always "
-                "produces stability or prescribe a real machine parameter."
+                (
+                    "Este ejemplo no demuestra que una mayor inercia siempre produzca "
+                    "estabilidad ni prescribe un parámetro para una máquina real. Es una "
+                    "comparación educativa posible."
+                )
             ),
         ),
         conceptual_questions=_questions(),
@@ -687,8 +760,10 @@ def _inertia_case() -> GuidedCase:
             LearningConcept.FIRST_SWING,
         ),
         provenance=(
-            "Synthetic public SMIB input family with a controlled H_s intervention; "
-            "H18 and H15 recompute both trajectories."
+            (
+                "Familia sintética pública de entradas SMIB con una intervención controlada "
+                "en la inercia; ambas trayectorias se recalculan con el mismo núcleo."
+            )
         ),
     )
 
@@ -697,14 +772,18 @@ def _first_swing_case() -> GuidedCase:
     return GuidedCase(
         case_id="first-swing-event-evidence",
         kind=GuidedCaseKind.FIRST_SWING_EVIDENCE,
-        title="Stable and unstable first-swing evidence",
+        title="Reconocer la estabilidad de primera oscilación",
         context=(
-            "A synthetic classical SMIB trajectory exposes H15 event ordering for "
-            "different clearing times."
+            (
+                "Una trayectoria sintética del modelo clásico SMIB permite observar el orden "
+                "de reversión y cruce para distintos tiempos de despeje."
+            )
         ),
         learning_objective=(
-            "Distinguish reversal-before-crossing from crossing-before-reversal using "
-            "the status, reason, event brackets, and speed evidence retained by H15."
+            (
+                "Distingue una reversión antes del cruce de un cruce antes de la reversión "
+                "usando diagnóstico, intervalos de muestras y desviación de velocidad."
+            )
         ),
         difficulty=GuidedCaseDifficulty.INTRODUCTORY,
         baseline_config=_base_config(t_clear_s=0.2),
@@ -712,26 +791,40 @@ def _first_swing_case() -> GuidedCase:
             GuidedGoalKind.FIRST_SWING_STATUS,
             FirstSwingStatus.UNSTABLE,
         ),
-        prediction_prompt="Predict the attempted sampled first-swing outcome.",
+        prediction_prompt=(
+            "Predice el resultado de la primera oscilación muestreada para la configuración "
+            "que vas a ejecutar."
+        ),
         prediction_options=("stable", "unstable", "indeterminate"),
         editable_parameters=(
             EditableParameter(
-                "t_clear_s", "Clearing time", "s", 0.2, 0.35, 0.2
+                "t_clear_s", quantity("t_clear_s").label, "s", 0.2, 0.35, 0.2
             ),
         ),
         hints=(
-            "Look for whether speed reverses before the unstable equilibrium is crossed.",
-            "H15 classifies event order from sampled brackets and retains its reason.",
+            "Busca si la desviación de velocidad revierte antes de cruzar el equilibrio inestable.",
+            (
+                "El diagnóstico utiliza el orden de eventos en intervalos de muestras y "
+                "conserva la razón observada; examina las dos velocidades del intervalo de "
+                "cruce."
+            ),
         ),
         pedagogical_solution=PedagogicalSolution(
             settings=(SolutionSetting("t_clear_s", 0.35, "s"),),
             explanation=(
-                "One pedagogical solution is to try the modeled clearing time 0.35 s "
-                "and inspect H15's crossing and speed evidence."
+                (
+                    "Una solución pedagógica posible es probar un despeje a 0.35 s y examinar"
+                    " la evidencia de cruce y velocidad. La falla dura más que en la "
+                    "configuración inicial; contrasta cómo cambia el estado al despejar y qué"
+                    " evento ocurre primero."
+                )
             ),
             limitation=(
-                "The result concerns one sampled first swing in a synthetic classical "
-                "SMIB case, not global or multimachine stability."
+                (
+                    "El resultado concierne a una primera oscilación muestreada de un caso "
+                    "SMIB sintético, no a estabilidad global o multimáquina. Es una "
+                    "intervención educativa posible."
+                )
             ),
         ),
         conceptual_questions=_questions(),
@@ -741,7 +834,10 @@ def _first_swing_case() -> GuidedCase:
             LearningConcept.SPEED_DEVIATION,
         ),
         provenance=(
-            "Synthetic public stable/unstable SMIB input family used by SincroLab "
-            "reference cases; H18/H15 recompute each attempted outcome."
+            (
+                "Familia sintética pública de entradas SMIB estables/inestables usada por los"
+                " casos de referencia de SincroLab; cada intento recalcula su resultado con "
+                "el mismo núcleo."
+            )
         ),
     )

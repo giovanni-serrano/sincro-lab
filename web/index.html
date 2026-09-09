@@ -12,19 +12,25 @@
 </head>
 <body>
   <a class="skip" href="#main">Saltar al contenido</a>
-  <header class="topbar">
-    <a class="brand" href="#home" aria-label="SincroLab, inicio"><span class="brand-mark">S</span>SincroLab<span class="edition">WEB</span></a>
+  <header class="sidebar">
+    <a class="brand" href="#home" aria-label="SincroLab, inicio">SincroLab</a>
+    <p class="brand-subtitle">Laboratorio educativo</p>
     <nav aria-label="Navegación principal">
-      <button id="home-nav" disabled>Casos guiados</button>
-      <button id="free-nav" disabled>Modo libre</button>
+      <button id="start-nav" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10 12 3l9 7M5 9v12h5v-7h4v7h5V9"/></svg>Inicio</button>
+      <button id="learn-nav" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v16M12 5C8 2 4 3 2 4v15c4-2 7-1 10 2 3-3 6-4 10-2V4c-2-1-6-2-10 1Z"/></svg>Aprender</button>
+      <button id="home-nav" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 2h10l4 4v16H5ZM14 2v6h5M8 12h8M8 16h8"/></svg>Casos guiados</button>
+      <button id="free-nav" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18M8 3v6M16 9v6M10 15v6"/></svg>Modo libre</button>
     </nav>
+    <p class="sidebar-note">Observar. Predecir.<br>Interpretar y experimentar.</p>
   </header>
-  <div class="runtime-bar"><span id="runtime-status" role="status" aria-live="polite" data-state="loading_pyodide">Cargando Pyodide…</span><span>Cálculo local en tu navegador</span></div>
-  <main id="main" tabindex="-1">
-    <div id="error" role="alert" hidden></div>
-    <div id="view"><p class="eyebrow">LABORATORIO EDUCATIVO · MODELO CLÁSICO SMIB</p><h1>Casos guiados</h1><p>Elige un fenómeno, registra tu predicción y contrástala con una simulación.</p><p>Preparando el catálogo… La primera carga necesita conexión a Internet.</p></div>
-  </main>
-  <footer><p>Modelo educativo de una máquina y barra infinita. No sustituye un estudio operacional de una red real.</p><p>Los intentos permanecen en memoria durante esta sesión. Al recargar se descartan.</p><details><summary>Información del entorno de cálculo</summary><pre id="runtime-identity">Pendiente de carga.</pre></details></footer>
+  <div class="workspace">
+    <div class="runtime-bar"><span id="runtime-status" role="status" aria-live="polite" data-state="loading_pyodide">Preparando el simulador…</span></div>
+    <main id="main" tabindex="-1">
+      <div id="error" role="alert" hidden></div>
+      <div id="view"><p class="eyebrow">LABORATORIO DE ESTABILIDAD TRANSITORIA</p><h1>Comprende la respuesta del rotor</h1><p>Preparando el laboratorio… La primera carga necesita conexión a Internet.</p></div>
+    </main>
+    <footer><p>Modelo educativo de una máquina y barra infinita. No sustituye un estudio operacional de una red real.</p><details><summary>Sesión y entorno de cálculo</summary><p>El cálculo se ejecuta localmente en tu navegador. Los intentos permanecen en memoria durante esta sesión. Al recargar se descartan.</p><pre id="runtime-identity">Pendiente de carga.</pre></details></footer>
+  </div>
   <noscript>Activa JavaScript para cargar el entorno Python y ejecutar el laboratorio.</noscript>
 </body>
 </html>

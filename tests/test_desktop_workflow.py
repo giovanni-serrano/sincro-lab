@@ -75,7 +75,7 @@ def test_real_six_phase_workflow_and_solution(window, app, case_id):
     )
     predict_and_run(window, app)
     first = window.controller.result
-    assert view.result_panel.status.text() == first.attempted_evaluation.first_swing.status.upper()
+    assert view.result_panel.status.text() == window.controller.result_view().status_label
     view.intervene_button.click()
     assert view.panels["Intervenir"].isVisible()
     assert tuple(view.editor.inputs) == tuple(
@@ -95,7 +95,7 @@ def test_real_six_phase_workflow_and_solution(window, app, case_id):
     assert result.goal_evaluation.achieved
     assert view.panels["Comparar"].isVisible()
     assert view.history.rowCount() == 2
-    assert view.changed_parameters.item(0, 0).text() == result.changed_parameters[0].key
+    assert view.changed_parameters.item(0, 0).text() == window.controller.result_view().changes[0][0]
     assert view.compare_plot.curves[0].delta_rad is result.baseline_evaluation.trajectory.delta_rad
     view.explain_button.click()
     assert view.panels["Explicar"].isVisible()
@@ -115,7 +115,7 @@ def test_ui_unanswered_assessment_is_not_scored_and_completed_pair_uses_h25(wind
     assert window.worker is None
     assert window.controller.result is None
     assert window.last_error is not None
-    assert "Completa" in view.error.text()
+    assert "Revisa" in view.error.text()
     for control in view.pre_questions.inputs.values():
         control.setCurrentIndex(2)
     predict_and_run(window, app, 3)
@@ -183,7 +183,7 @@ def test_free_mode_handles_invalid_input_and_real_indeterminate(window, app):
     window.free.run_button.click()
     wait_for(window, app)
     assert window.last_error is None
-    assert window.free.result_panel.status.text() == "INDETERMINATE"
+    assert window.free.result_panel.status.text() == "No concluyente"
     assert window.controller.free_result.first_swing.status == "indeterminate"
     retained = window.controller.free_result
     fields["dt_s"].setText("-1")
@@ -191,7 +191,7 @@ def test_free_mode_handles_invalid_input_and_real_indeterminate(window, app):
     wait_for(window, app)
     assert isinstance(window.last_error, ValueError)
     assert window.controller.free_result is retained
-    assert window.free.result_panel.status.text() == "INDETERMINATE"
+    assert window.free.result_panel.status.text() == "No concluyente"
     assert "Traceback" not in window.free.error.text()
 
 
@@ -213,7 +213,7 @@ def test_ui_double_preserves_returned_status_without_classification(app, status)
     widget.open_case(source.case_id)
     widget.detail.begin_button.click()
     predict_and_run(widget, app)
-    assert widget.detail.result_panel.status.text() == status.upper()
+    assert widget.detail.result_panel.status.text() == next(item.label for item in portable.get_learning_content().meanings if item.key == status)
     assert widget.controller.result is returned
     widget.close()
     widget.deleteLater()

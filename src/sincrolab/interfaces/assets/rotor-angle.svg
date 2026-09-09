@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320" role="img" aria-labelledby="title desc">
+  <title id="title">Ángulo eléctrico relativo del rotor</title>
+  <desc id="desc">Dos direcciones parten del mismo origen. El arco delta indica la separación entre la posición eléctrica del rotor y la referencia síncrona. Sin escala ni umbral de estabilidad.</desc>
+  <g fill="none" stroke-width="2">
+    <circle cx="130" cy="154" r="90" stroke="#D9D5C8"/>
+    <path d="M130 154H240m-8-7 8 7-8 7" stroke="#5F7077" stroke-dasharray="6 4"/>
+    <path d="m130 154 74-65m-14 3 14-3-4 14" stroke="#087895" stroke-width="3"/>
+    <path d="M171 154a41 41 0 0 0-10-27" stroke="#087895"/>
+    <circle cx="130" cy="154" r="4" fill="#365A6C" stroke="#365A6C"/>
+    <path d="M212 89h43M245 154h10" stroke="#D9D5C8"/>
+  </g>
+  <g font-family="Segoe UI, Arial, sans-serif" fill="#102D3B" font-size="18">
+    <text x="180" y="137" font-size="28" fill="#087895" font-style="italic">δ</text>
+    <text x="265" y="72" font-weight="600">Posición eléctrica</text><text x="265" y="95" font-weight="600">del rotor</text>
+    <text x="265" y="148" font-weight="600">Referencia síncrona</text>
+    <text x="265" y="175" fill="#5F7077">Fase de la</text><text x="265" y="198" fill="#5F7077">barra infinita</text>
+    <text x="240" y="276" text-anchor="middle" fill="#5F7077">δ mide una separación angular.</text>
+    <text x="240" y="303" text-anchor="middle" fill="#5F7077">No cuenta las vueltas absolutas.</text>
+  </g>
+</svg>

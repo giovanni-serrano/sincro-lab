@@ -14,7 +14,8 @@ DESKTOP = ROOT / "src/sincrolab/interfaces/desktop"
 
 def test_desktop_imports_only_presentation_qt_and_small_stdlib_surface():
     allowed = {"sys", "__future__", "dataclasses", "collections.abc", "functools",
-               "math", "PySide6.QtCore", "PySide6.QtWidgets", "PySide6.QtGui"}
+               "math", "PySide6.QtCore", "PySide6.QtWidgets", "PySide6.QtGui",
+               "PySide6.QtSvg", "PySide6.QtSvgWidgets", "importlib.resources", "json"}
     for path in DESKTOP.glob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
@@ -108,13 +109,14 @@ def test_visual_modules_and_injected_navigation_do_not_load_science():
         from sincrolab.interfaces.desktop.presentation import InputField
         class MetadataOnlyController:
             catalog = ()
+            content = {"topics": [], "glossary": [], "learning_path": []}
             def free_fields(self):
                 return (InputField('H_s', 'H', 1.0, 's'),)
-            def free_configuration(self):
+            def free_configuration(self, *, advanced=False):
                 return (('H_s', '1'),)
         window = MainWindow(MetadataOnlyController())
         window.show()
-        for destination in ('home', 'cases', 'free'):
+        for destination in ('home', 'learn', 'cases', 'free'):
             window.navigate(destination)
             app.processEvents()
         assert not any(name == root or name.startswith(root + '.')

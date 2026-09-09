@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 340" role="img" aria-labelledby="title desc">
+  <title id="title">Cadena causal del movimiento, sin amortiguamiento</title>
+  <desc id="desc">Para D igual a cero, el balance Pm menos Pe determina la aceleración. La aceleración cambia la velocidad relativa y la velocidad relativa cambia el ángulo. No representa una evolución calculada.</desc>
+  <g fill="none" stroke="#087895" stroke-width="2"><path d="M119 59v31m-6-7 6 7 6-7M119 139v31m-6-7 6 7 6-7M119 217v31m-6-7 6 7 6-7"/></g>
+  <g font-family="Segoe UI, Arial, sans-serif" fill="#102D3B">
+    <g text-anchor="middle"><text x="119" y="43" font-size="25">Pm − Pe</text><text x="119" y="123" font-size="22">Aceleración</text><text x="119" y="203" font-size="27">Δω</text><text x="119" y="280" font-size="30">δ</text></g>
+    <g font-size="18" fill="#5F7077"><text x="234" y="40">Balance de potencia</text><text x="234" y="120">Cambia la velocidad</text><text x="234" y="200">Velocidad relativa</text><text x="234" y="277">Ángulo relativo</text><text x="240" y="329" text-anchor="middle">D = 0 · relación conceptual, sin trayectoria</text></g>
+  </g>
+</svg>

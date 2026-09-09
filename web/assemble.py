@@ -13,8 +13,20 @@ import zipfile
 
 ASSETS = (
     "index.html", "styles.css", "app.js", "plots.js", "runtime.js",
-    "worker.js", "pyodide-config.js",
+    "worker.js", "pyodide-config.js", "visuals.js",
+    "design.json", "smib.svg", "rotor-angle.svg", "timeline.svg", "causal-chain.svg",
 )
+
+
+SHARED_ASSETS = {"design.json", "smib.svg", "rotor-angle.svg", "timeline.svg", "causal-chain.svg"}
+
+
+def asset_path(name: str, root: Path) -> Path:
+    """Use an explicit shared resource set, never arbitrary package files."""
+    if name not in ASSETS:
+        raise ValueError("Unknown web asset")
+    folder = root / "src/sincrolab/interfaces/assets" if name in SHARED_ASSETS else root / "web"
+    return folder / name
 
 
 def assemble(wheel: Path, output: Path, *, root: Path | None = None) -> dict[str, object]:
@@ -35,7 +47,7 @@ def assemble(wheel: Path, output: Path, *, root: Path | None = None) -> dict[str
         package_files = {
             path.relative_to(root / "src").as_posix(): path.read_bytes()
             for path in (root / "src/sincrolab").rglob("*")
-            if path.is_file() and path.suffix in {".py", ".json"}
+            if path.is_file() and (path.suffix in {".py", ".json"} or path.relative_to(root / "src/sincrolab").as_posix() in {f"interfaces/assets/{name}" for name in SHARED_ASSETS})
         }
         if "sincrolab/interfaces/web/bridge.py" not in package_files:
             raise ValueError("Checkout is missing the web bridge")
@@ -56,14 +68,14 @@ def assemble(wheel: Path, output: Path, *, root: Path | None = None) -> dict[str
         "wheel_sha256": hashlib.sha256(wheel.read_bytes()).hexdigest(),
         "package_version": metadata["Version"],
         "package_source_sha256": {name: hashlib.sha256(data).hexdigest() for name, data in sorted(package_files.items())},
-        "asset_sha256": {name: hashlib.sha256((root / "web" / name).read_bytes()).hexdigest() for name in ASSETS},
+        "asset_sha256": {name: hashlib.sha256(asset_path(name, root).read_bytes()).hexdigest() for name in ASSETS},
     }
     allowed = {*ASSETS, wheel.name, "manifest.json"}
     output.mkdir(parents=True, exist_ok=True)
     if any(path.is_symlink() or not path.is_file() or path.name not in allowed for path in output.iterdir()):
         raise ValueError("Output contains unrelated files; choose an empty directory")
     for name in ASSETS:
-        shutil.copyfile(root / "web" / name, output / name)
+        shutil.copyfile(asset_path(name, root), output / name)
     shutil.copyfile(wheel, output / wheel.name)
     (output / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return manifest

@@ -18,39 +18,64 @@ from sincrolab.interfaces.desktop.presentation import (
 )
 
 
+def _meaning(key: str) -> str:
+    return next(item.label for item in portable.get_learning_content().meanings
+                if item.key == key)
+
+
+def _quantity(key: str):
+    return next(item for item in portable.get_learning_content().quantities
+                if item.key == key)
+
+
+def _quantity_label(key: str) -> str:
+    item = _quantity(key)
+    return f"{item.label} · {item.symbol} ({item.unit})" if item.unit else item.label
+
+
 def _preview(case: portable.GuidedCaseSummaryDTO | portable.GuidedCaseDTO) -> CasePreview:
     return CasePreview(
-        case.case_id, case.title, case.kind, case.learning_objective, case.difficulty,
+        case.case_id, case.title, _meaning(case.kind), case.learning_objective,
+        _meaning(case.difficulty),
     )
 
 
-def _config_rows(config: portable.SimulationConfigDTO) -> tuple[tuple[str, str], ...]:
+def _config_rows(config: portable.SimulationConfigDTO, *, advanced: bool = False) -> tuple[tuple[str, str], ...]:
     rows = []
     for group, value in config.to_dict().items():
         if group == "schema_version":
             continue
-        if isinstance(value, dict):
-            rows.extend((key, number(item)) for key, item in value.items()
-                        if key != "schema_version")
-        else:
-            rows.append((group, number(value)))
+        values = value.items() if isinstance(value, dict) else ((group, value),)
+        for key, item in values:
+            if key == "schema_version":
+                continue
+            metadata = _quantity(key)
+            if advanced:
+                rows.append((f"{_quantity_label(key)} · {key}", number(item)))
+            elif metadata.disclosure == "basic":
+                rows.append((f"{_quantity_label(key)}\n{metadata.description}", number(item)))
     return tuple(rows)
 
 
 def _explanation(value: portable.ExplanationDTO) -> str:
-    """Render H24 text/evidence verbatim; do not interpret its status."""
-    lines = [value.title, value.summary, ""]
-    lines.extend(
+    """Render the existing dynamic interpretation without technical keys."""
+    return "\n\n".join((value.title, value.summary, *value.limitations))
+
+
+def _evidence(value: portable.ExplanationDTO) -> str:
+    """Keep exact technical identifiers available under advanced disclosure."""
+    return "\n\n".join(
         f"{item.statement}\n{item.key}: {number(item.value)} {item.unit or ''}"
         for item in value.evidence
     )
-    lines.extend(("", *value.limitations))
-    return "\n\n".join(lines)
 
 
 def _curve(name: str, evaluation: portable.ClearingTimeEvaluationDTO) -> Curve:
     trajectory = evaluation.trajectory
-    return Curve(name, trajectory.time_s, trajectory.delta_rad, trajectory.omega_dev_pu)
+    return Curve(name, trajectory.time_s, trajectory.delta_rad, trajectory.omega_dev_pu,
+                 tuple(_quantity_label(key) for key in ("delta_rad", "omega_dev_pu", "time_s")),
+                 tuple((_quantity(key).label, getattr(evaluation.configuration.network, key))
+                       for key in ("t_fault_s", "t_clear_s")))
 
 
 def _assessment(result: portable.GuidedAttemptResultDTO) -> str:
@@ -67,19 +92,20 @@ def _assessment(result: portable.GuidedAttemptResultDTO) -> str:
 def _result_view(result: portable.GuidedAttemptResultDTO) -> ResultView:
     comparison = result.scientific_comparison
     rows = (
-        ("Estado", comparison.baseline_status, comparison.attempted_status),
-        ("Razón", comparison.baseline_reason, comparison.attempted_reason),
-        ("Máximo delta_rad", number(comparison.baseline_max_delta_rad),
+        ("Estado", _meaning(comparison.baseline_status), _meaning(comparison.attempted_status)),
+        ("Razón", _meaning(comparison.baseline_reason), _meaning(comparison.attempted_reason)),
+        (_quantity_label("max_delta_rad"), number(comparison.baseline_max_delta_rad),
          number(comparison.attempted_max_delta_rad)),
-        ("Máximo |omega_dev_pu|", number(comparison.baseline_max_abs_omega_dev_pu),
+        (_quantity_label("max_abs_omega_dev_pu"), number(comparison.baseline_max_abs_omega_dev_pu),
          number(comparison.attempted_max_abs_omega_dev_pu)),
     )
     clearing = ""
     if result.critical_clearing_bracket is not None:
         bracket = result.critical_clearing_bracket
         clearing = "\n".join(
-            f"{key}: {number(value)}" for key, value in bracket.to_dict().items()
-            if key != "schema_version"
+            f"{_quantity_label(key)}: {number(getattr(bracket, key))}"
+            for key in ("stable_t_clear_s", "unstable_t_clear_s", "bracket_width_s",
+                        "dt_s", "time_tolerance_s", "iterations")
         )
         if result.critical_clearing_explanation is not None:
             clearing += "\n\n" + _explanation(result.critical_clearing_explanation)
@@ -89,10 +115,10 @@ def _result_view(result: portable.GuidedAttemptResultDTO) -> ResultView:
         reason=observed.first_swing.reason,
         prediction=result.prediction,
         configuration=_config_rows(result.attempted_config),
-        curves=(_curve("Baseline", result.baseline_evaluation), _curve("Intento", observed)),
+        curves=(_curve("Configuración inicial", result.baseline_evaluation), _curve("Intento", observed)),
         comparison=rows,
         changes=tuple(
-            (item.key, number(item.baseline_value), number(item.attempted_value), item.unit)
+            (_quantity_label(item.key), number(item.baseline_value), number(item.attempted_value), item.unit)
             for item in result.changed_parameters
         ),
         explanation=_explanation(observed.explanation),
@@ -102,6 +128,14 @@ def _result_view(result: portable.GuidedAttemptResultDTO) -> ResultView:
             *result.debrief_limitations,
         )),
         clearing=clearing,
+        status_label=_meaning(observed.first_swing.status),
+        reason_label=_meaning(observed.first_swing.reason),
+        prediction_label=_meaning(result.prediction),
+        advanced="\n\n".join((
+            _evidence(observed.explanation),
+            "\n".join(f"{key}: {value}" for key, value in _config_rows(result.attempted_config, advanced=True)),
+            _evidence(result.critical_clearing_explanation) if result.critical_clearing_explanation else "",
+        )),
     )
 
 
@@ -109,7 +143,9 @@ class DesktopController:
     """Own one explicit session; workers execute immutable request snapshots."""
 
     def __init__(self) -> None:
-        self.catalog = tuple(_preview(case) for case in portable.list_guided_cases())
+        self.content = portable.get_learning_content().to_dict()
+        catalog = {case.case_id: case for case in portable.list_guided_cases()}
+        self.catalog = tuple(_preview(catalog[item["case_id"]]) for item in self.content["cases"])
         self.case: portable.GuidedCaseDTO | None = None
         self.phase = "Observar"
         self.prediction: str | None = None
@@ -150,15 +186,26 @@ class DesktopController:
             _preview(case), case.context, _config_rows(case.baseline_config),
             case.prediction_prompt, case.prediction_options,
             tuple(InputField(
-                item.key, item.label, self.changes.get(item.key, item.baseline_value),
-                item.unit, item.minimum, item.maximum,
+                item.key, _quantity_label(item.key), self.changes.get(item.key, item.baseline_value),
+                item.unit, item.minimum, item.maximum, _quantity(item.key).description,
             ) for item in case.editable_parameters),
             tuple(QuestionView(
                 item.question_id, item.prompt,
                 tuple((option.option_id, option.text) for option in item.options),
             ) for item in case.conceptual_questions),
             case.hints_available, case.has_pedagogical_solution, case.provenance,
+            _config_rows(case.baseline_config, advanced=True),
+            tuple((key, self.guidance()[key]) for key in ("observe", "intervene", "compare", "explain",
+                                                        "remember", "experimental_question", "prediction_guidance")),
+            tuple((key, item["label"], item["description"])
+                  for key in case.prediction_options
+                  for item in self.content["meanings"] if item["key"] == key),
+            tuple((key, topic["title"]) for key in self.guidance()["topic_ids"]
+                  for topic in self.content["topics"] if topic["topic_id"] == key),
         )
+
+    def guidance(self) -> dict[str, object]:
+        return next(item for item in self.content["cases"] if item["case_id"] == self.case.case_id)
 
     def go_to(self, phase: str) -> None:
         """Gate display phases without assigning a scientific meaning to them."""
@@ -176,12 +223,12 @@ class DesktopController:
         fields = {item.key: item for item in self.case_view().fields}
         if set(values) - fields.keys():
             raise ValueError("El cambio contiene parámetros no editables del caso.")
-        parsed = {key: self._number(key, value) for key, value in values.items()}
+        parsed = {key: self._number(_quantity_label(key), value) for key, value in values.items()}
         for key, value in parsed.items():
             field = fields[key]
             if not field.minimum <= value <= field.maximum:
                 raise ValueError(
-                    f"{key} debe estar entre {field.minimum} y {field.maximum} {field.unit}."
+                    f"{field.label} debe estar entre {field.minimum} y {field.maximum} {field.unit}."
                 )
         self.changes = parsed
         self.prediction = None
@@ -274,8 +321,8 @@ class DesktopController:
 
     def history_rows(self) -> tuple[tuple[str, str, str, str], ...]:
         return tuple(
-            (str(index), result.prediction, result.attempted_evaluation.first_swing.status,
-             ", ".join(f"{item.key}: {number(item.baseline_value)} → "
+            (str(index), _meaning(result.prediction), _meaning(result.attempted_evaluation.first_swing.status),
+             ", ".join(f"{_quantity_label(item.key)}: {number(item.baseline_value)} → "
                        f"{number(item.attempted_value)} {item.unit}"
                        for item in result.changed_parameters) or "Sin cambios")
             for index, result in enumerate(self.history, start=1)
@@ -285,26 +332,24 @@ class DesktopController:
         if self.free_config is None:
             if not self.catalog:
                 raise ValueError("No hay una configuración pública disponible.")
-            self.free_config = portable.get_guided_case(self.catalog[0].case_id).baseline_config
+            self.free_config = portable.get_guided_case(portable.list_guided_cases()[0].case_id).baseline_config
         # Offer a small subset; all other inputs, including the explicit initial
         # state, stay visible and are retained from the selected public baseline.
         config = self.free_config
-        return (
-            InputField("H_s", "H_s · inercia", config.parameters.H_s, "s"),
-            InputField("t_clear_s", "t_clear_s · despeje", config.network.t_clear_s, "s"),
-            InputField("t_end_s", "t_end_s · horizonte", config.t_end_s, "s"),
-            InputField("dt_s", "dt_s · paso temporal", config.dt_s, "s"),
-        )
+        values = (("H_s", config.parameters.H_s), ("t_clear_s", config.network.t_clear_s),
+                  ("t_end_s", config.t_end_s), ("dt_s", config.dt_s))
+        return tuple(InputField(key, _quantity_label(key), value, _quantity(key).unit,
+                                description=_quantity(key).description) for key, value in values)
 
-    def free_configuration(self) -> tuple[tuple[str, str], ...]:
+    def free_configuration(self, *, advanced: bool = False) -> tuple[tuple[str, str], ...]:
         self.free_fields()
-        return _config_rows(self.free_config)
+        return _config_rows(self.free_config, advanced=advanced)
 
     def prepare_free(self, values: Mapping[str, str | float]) -> Callable[[], portable.ClearingTimeEvaluationDTO]:
         fields = self.free_fields()
         if set(values) != {item.key for item in fields}:
             raise ValueError("Completa los cuatro parámetros de Modo libre.")
-        parsed = {key: self._number(key, value) for key, value in values.items()}
+        parsed = {key: self._number(_quantity_label(key), value) for key, value in values.items()}
         config = replace(
             self.free_config,
             parameters=replace(self.free_config.parameters, H_s=parsed["H_s"]),
@@ -326,4 +371,8 @@ class DesktopController:
             value.first_swing.status, value.first_swing.reason, "",
             _config_rows(value.configuration), (_curve("Ejecución", value),),
             (), (), _explanation(value.explanation), "", "", "",
+            _meaning(value.first_swing.status), _meaning(value.first_swing.reason), "",
+            _evidence(value.explanation) + "\n\n" + "\n".join(
+                f"{key}: {item}" for key, item in _config_rows(value.configuration, advanced=True)
+            ),
         )
