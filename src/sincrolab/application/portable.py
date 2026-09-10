@@ -9,13 +9,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, fields, replace
+from decimal import Decimal
 from enum import Enum
 from functools import lru_cache
 from importlib.resources import files
 import csv
 import io
 import json
-from math import isfinite
+from math import degrees, isclose, isfinite, tau, trunc, ulp
 from typing import Any, ClassVar
 
 import numpy as np
@@ -49,6 +50,7 @@ from sincrolab.models import (
     SMIBParameters,
     SMIBTransientNetwork,
     initial_equilibrium_angle_rad,
+    electrical_power_pu,
     smib_swing_rhs,
 )
 
@@ -529,8 +531,49 @@ class _ReferenceDefinition:
     runtime_reproduction_scope: str
 
 
+@dataclass(frozen=True)
+class LabClearingChoiceDTO(_PortableDTO):
+    t_clear_s: float
+    fault_duration_s: float
+
+
+@dataclass(frozen=True)
+class TransientLabDTO(_PortableDTO):
+    """Discovery inputs without outcome-bearing reference names."""
+
+    baseline_config: SimulationConfigDTO
+    canonical_source: str
+    projection_source: str
+    clearing_choices: tuple[LabClearingChoiceDTO, ...]
+    initial_angle_deg: float
+    prediction_options: tuple[str, ...]
+    limitation: str
+
+
+@dataclass(frozen=True)
+class TransientLabRunDTO(_PortableDTO):
+    evaluation: ClearingTimeEvaluationDTO
+    prediction: str
+    clearing_choice_index: int
+    reference_id: str
+    source_case_file: str
+    changed_fields: tuple[str, ...]
+    canonical_source: str
+    projection_source: str
+    fault_duration_s: float
+    playhead_time_s: tuple[float, ...]
+    angle_deg: tuple[float, ...]
+    relative_turns: tuple[int, ...]
+    network_state: tuple[str, ...]
+    mechanical_power_pu: tuple[float, ...]
+    electrical_power_pu: tuple[float, ...]
+    power_imbalance_pu: tuple[float, ...]
+    cause: tuple[str, ...]
+    formal_explanation: str
+
 
 PortableOutput = (
+    TransientLabDTO | TransientLabRunDTO |
     LearningContentDTO |
     PortableCapabilities
     | GuidedCaseSummaryDTO
@@ -576,6 +619,133 @@ def evaluate_transient(config: SimulationConfigDTO) -> ClearingTimeEvaluationDTO
         dt_s=domain_config.dt_s,
     )
     return _evaluation_dto(evaluation)
+
+
+def _transient_lab_references() -> tuple[ReferenceCaseDTO, ReferenceCaseDTO]:
+    """Keep canonical outcome associations private until a run is executed."""
+    references = tuple(get_reference_case(item.case_id) for item in list_reference_cases()
+        if item.runtime_reproduction_scope == "all_expected_observations")
+    selected: list[ReferenceCaseDTO] = []
+    for status in ("STABLE", "UNSTABLE"):
+        matches = tuple(item for item in references if any(
+            observation.observation_id == "first_swing_status"
+            and observation.expected_value == status
+            for observation in item.expected_observations))
+        if len(matches) != 1:
+            raise RuntimeError("Transient lab requires one retained reference per outcome")
+        selected.append(matches[0])
+    early, late = selected
+    a, b = early.configuration, late.configuration
+    if replace(a, network=replace(a.network, t_clear_s=b.network.t_clear_s)) != b:
+        raise RuntimeError("Transient lab references must differ only in clearing")
+    return early, late
+
+
+def get_transient_lab() -> TransientLabDTO:
+    """Select two existing H23 references without copying their parameters.
+
+    The interaction domain is the closed interval between these references,
+    on their existing integration grid. It is a teaching range, not a CCT
+    bracket or a stability threshold. No simulation runs at discovery time.
+    """
+    early, late = _transient_lab_references()
+    a, b = early.configuration, late.configuration
+    first = Decimal(str(a.network.t_clear_s))
+    last = Decimal(str(b.network.t_clear_s))
+    step = Decimal(str(a.dt_s))
+    count = (last - first) / step
+    if count != int(count) or count <= 0:
+        raise RuntimeError("Transient lab clearing range must align to dt_s")
+    choices = tuple(
+        LabClearingChoiceDTO(float(first + i * step),
+            float(first + i * step - Decimal(str(a.network.t_fault_s))))
+        for i in range(int(count) + 1)
+    )
+    return TransientLabDTO(
+        a, early.canonical_source, early.projection_source, choices,
+        degrees(a.initial_state.delta_rad),
+        ("maintain", "lose", "unsure"),
+        "Modelo clásico SMIB con amortiguamiento. El diagnóstico corresponde "
+        "a la primera oscilación muestreada; no garantiza estabilidad global. "
+        "La falla cambia la capacidad equivalente de transferencia: no es un "
+        "modelo completo de cortocircuito.",
+    )
+
+
+def run_transient_lab(clearing_choice_index: int, prediction: str) -> TransientLabRunDTO:
+    """Execute one predicted experiment, changing only the clearing time."""
+    lab = get_transient_lab()
+    if type(clearing_choice_index) is not int or not 0 <= clearing_choice_index < len(lab.clearing_choices):
+        raise ValueError("clearing_choice_index is outside the lab domain")
+    if prediction not in lab.prediction_options:
+        raise ValueError("A valid prediction is required before execution")
+    choice = lab.clearing_choices[clearing_choice_index]
+    config = replace(lab.baseline_config,
+        network=replace(lab.baseline_config.network, t_clear_s=choice.t_clear_s))
+    evaluation = evaluate_transient(config)
+    return _transient_lab_projection(evaluation, lab, clearing_choice_index, prediction)
+
+
+def _transient_lab_projection(
+    evaluation: ClearingTimeEvaluationDTO, lab: TransientLabDTO,
+    choice_index: int, prediction: str,
+) -> TransientLabRunDTO:
+    """Present exact samples; delegate power and network state to model owners.
+
+    Segmented RK4 grids may differ by a few float64 ULPs after clearing. A
+    shared decimal grid labels the same samples, only after checking a 32-ULP
+    bound. Original timestamps/states remain intact in evaluation. There is
+    no interpolation, resampling, angle wrapping or alternate trajectory.
+    """
+    config = _config_from_dto(evaluation.configuration)
+    trajectory = evaluation.trajectory
+    origin, step = Decimal(str(config.t_start_s)), Decimal(str(config.dt_s))
+    times = tuple(float(origin + i * step) for i in range(len(trajectory.time_s)))
+    if any(not isclose(t, original, rel_tol=0, abs_tol=32 * ulp(max(1.0, abs(t))))
+           for t, original in zip(times, trajectory.time_s, strict=True)):
+        raise RuntimeError("Lab samples do not share the declared time grid")
+    states, powers, gaps, causes = [], [], [], []
+    for t, angle, speed in zip(trajectory.time_s, trajectory.delta_rad,
+                                trajectory.omega_dev_pu, strict=True):
+        pmax = config.network.Pmax_at(t)
+        pe = electrical_power_pu(angle, pmax)
+        gap = config.parameters.Pm_pu - pe
+        acceleration = smib_swing_rhs(t, np.array([angle, speed]),
+            config.parameters, Pmax_pu=pmax)[1]
+        states.append(config.network.state_at(t).value)
+        powers.append(pe)
+        gaps.append(gap)
+        balance = ("La entrada mecánica supera la salida eléctrica." if gap > 0 else
+                   "La salida eléctrica supera la entrada mecánica." if gap < 0 else
+                   "La entrada y la salida se equilibran.")
+        motion = ("La velocidad relativa aumenta." if acceleration > 0 else
+                  "La velocidad relativa disminuye." if acceleration < 0 else
+                  "La velocidad relativa no cambia en este instante.")
+        # Both retained references start at the canonical prefault equilibrium.
+        # Do not turn roundoff in its evaluated RHS into a claimed disturbance.
+        causes.append(
+            "Antes de la falla, el generador parte del equilibrio entre entrada y salida."
+            if t < config.network.t_fault_s else balance + " " + motion
+        )
+    is_late = choice_index == len(lab.clearing_choices) - 1
+    early, late = _transient_lab_references()
+    reference = late if is_late else early
+    return TransientLabRunDTO(
+        evaluation, prediction, choice_index, reference.case_id,
+        reference.input_case_file,
+        () if choice_index in (0, len(lab.clearing_choices) - 1) else ("network.t_clear_s",),
+        lab.canonical_source, lab.projection_source,
+        lab.clearing_choices[choice_index].fault_duration_s, times,
+        tuple(degrees(value) for value in trajectory.delta_rad),
+        tuple(trunc((value - config.initial_state.delta_rad) / tau) for value in trajectory.delta_rad),
+        tuple(states), (config.parameters.Pm_pu,) * len(times), tuple(powers), tuple(gaps), tuple(causes),
+        "Ángulo del rotor — δ: posición angular eléctrica respecto de la referencia "
+        "síncrona. Entrada mecánica → Pm; salida eléctrica → Pe. Pa = Pm − Pe. "
+        "Con amortiguamiento, d(Δω)/dt = (Pa − D·Δω)/(2H); dδ/dt = ωs·Δω. "
+        "El movimiento continúa después del despeje porque la velocidad no cambia "
+        "instantáneamente. Las vueltas cuentan el avance completo desde la posición "
+        "inicial; no son el criterio de estabilidad.",
+    )
 
 
 def list_guided_cases() -> tuple[GuidedCaseSummaryDTO, ...]:
@@ -1535,6 +1705,11 @@ def _find_reference_case(case_id: str) -> _ReferenceDefinition:
 
 
 __all__ = [
+    "LabClearingChoiceDTO",
+    "TransientLabDTO",
+    "TransientLabRunDTO",
+    "get_transient_lab",
+    "run_transient_lab",
     "ClearingTimeBracketDTO",
     "ClearingTimeEvaluationDTO",
     "ConceptOptionDTO",

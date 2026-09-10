@@ -14,6 +14,7 @@ import zipfile
 ASSETS = (
     "index.html", "styles.css", "app.js", "plots.js", "runtime.js",
     "worker.js", "pyodide-config.js", "visuals.js",
+    "transient-lab.js", "transient-lab.css",
     "design.json", "smib.svg", "rotor-angle.svg", "timeline.svg", "causal-chain.svg",
 )
 

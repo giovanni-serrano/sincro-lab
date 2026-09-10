@@ -54,7 +54,13 @@ def _configuration(value: object) -> portable.SimulationConfigDTO:
 def dispatch(operation: str, payload: object = None) -> object:
     """Return canonical JSON-friendly payloads without presentation rounding."""
     data = _mapping({} if payload is None else payload)
-    if operation == "learning_content":
+    if operation == "transient_lab":
+        result = portable.get_transient_lab()
+    elif operation == "transient_lab_run":
+        if set(data) != {"clearing_choice_index", "prediction"}:
+            raise ValueError("Unexpected transient lab request fields")
+        result = portable.run_transient_lab(data["clearing_choice_index"], data["prediction"])
+    elif operation == "learning_content":
         result = portable.get_learning_content()
     elif operation == "capabilities":
         result = portable.get_capabilities()

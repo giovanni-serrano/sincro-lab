@@ -1,3 +1,4 @@
+import { mountTransientLab } from "./transient-lab.js";
 import { Runtime } from "./runtime.js";
 import { trajectoryPlots } from "./plots.js";
 import { design, diagram } from "./visuals.js";
@@ -21,6 +22,9 @@ const errorLabels = {
 const session = { content: null, sourceCatalog: [], catalog: [], case: null, phase: "Observar", changes: [], prediction: "",
   hints: [], solution: null, result: null, history: [], freeConfig: null, freeResult: null, page: "home" };
 let busy = true;
+let labView = null;
+const labMemory = {};
+function leaveLab() { labView?.destroy(); labView = null; }
 const runtime = new Runtime(updateState);
 
 function element(tag, text, className) {
@@ -48,7 +52,7 @@ function updateControls() {
     node.disabled = busy || runtime.state !== "ready" || node.dataset.locked === "true";
   }
   view.setAttribute("aria-busy", String(busy));
-  const active = { home:"start-nav", cases:"home-nav", guided:"home-nav", learn:"learn-nav", free:"free-nav" }[session.page];
+  const active = { home:"start-nav", cases:"home-nav", guided:"home-nav", learn:"learn-nav", free:"free-nav", lab:"lab-nav" }[session.page];
   for (const node of document.querySelectorAll(".sidebar nav button")) {
     if (node.id === active) node.setAttribute("aria-current", "page");
     else node.removeAttribute("aria-current");
@@ -137,12 +141,14 @@ function download(value, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 function renderHome() {
+  leaveLab();
   session.page = "home";
   view.replaceChildren(element("p", "LABORATORIO DE ESTABILIDAD TRANSITORIA", "eyebrow"),
     element("h1", "Comprende la respuesta del rotor"),
     element("p", "Explora el modelo clásico de una máquina conectada a una barra infinita. Observa, predice y compara el efecto de tu intervención.", "home-intro muted"));
   const hero = element("div", undefined, "home-hero"); hero.append(diagram("smib"));
-  const links = actions(button("Comenzar a aprender →", () => renderLearn(), { primary:true }),
+  const links = actions(button("Experimentar con el tiempo →", openLab, { primary:true, id:"open-transient-lab" }),
+    button("Comenzar a aprender →", () => renderLearn(), { primary:true }),
     button("Explorar casos guiados →", renderCatalog), button("Modo libre →", openFree));
   links.className = "home-actions";
   const path = element("ol");
@@ -152,6 +158,7 @@ function renderHome() {
   updateControls();
 }
 function renderCatalog() {
+  leaveLab();
   session.page = "cases";
   view.replaceChildren(element("p", "CASOS GUIADOS", "eyebrow"),
     element("h1", "Tres escenarios para explorar"),
@@ -170,6 +177,7 @@ function renderCatalog() {
   updateControls();
 }
 function renderLearn(topicId = session.content.topics[0].topic_id) {
+  leaveLab();
   session.page = "learn";
   view.replaceChildren(element("p", "APRENDER", "eyebrow"), element("h1", "Fundamentos y modelo"));
   if (session.case) {
@@ -242,6 +250,7 @@ async function openCase(caseId) {
   renderCase();
 }
 function renderCase() {
+  leaveLab();
   session.page = "guided";
   const item = session.case;
   view.replaceChildren(button("← Casos guiados", renderCatalog), element("p", meaning(item.kind).label, "eyebrow"),
@@ -458,6 +467,7 @@ async function openFree() {
   renderFree();
 }
 function renderFree() {
+  leaveLab();
   session.page = "free";
   view.replaceChildren(element("p", "EXPLORACIÓN ABIERTA", "eyebrow"), element("h1", "Modo libre"),
     element("p", "La configuración sintética parte del experimento de despeje. Edita inercia, despeje, horizonte y paso temporal. El estado inicial y los demás parámetros se conservan explícitamente.", "muted"));
@@ -483,6 +493,16 @@ function renderFree() {
   updateControls();
 }
 
+async function openLab() {
+  leaveLab();
+  session.labDefinition ??= await runtime.call("transient_lab");
+  session.page = "lab";
+  labMemory.call = (operation, payload) => runtime.call(operation, payload);
+  labView = mountTransientLab(view, session.labDefinition, labMemory, perform);
+  updateControls();
+}
+
+document.querySelector("#lab-nav").addEventListener("click", () => perform(openLab));
 document.querySelector("#start-nav").addEventListener("click", () => perform(renderHome));
 document.querySelector("#home-nav").addEventListener("click", () => perform(renderCatalog));
 document.querySelector("#learn-nav").addEventListener("click", () => perform(() => renderLearn()));
