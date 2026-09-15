@@ -748,6 +748,21 @@ def _transient_lab_projection(
     )
 
 
+def run_phenomenon(clearing_choice_index: int, prediction: str) -> dict[str, object]:
+    """Add teaching evidence after the existing prediction-gated experiment."""
+    from sincrolab.application.phenomenon import explain_run
+
+    run = run_transient_lab(clearing_choice_index, prediction)
+    return {"run": run.to_dict(), "lesson": explain_run(run)}
+
+
+def prepare_phenomenon_transfer(used_choice_indices: Sequence[int]) -> dict[str, object]:
+    """Select an unseen teaching input without computing its outcome."""
+    from sincrolab.application.phenomenon import prepare_transfer
+
+    return prepare_transfer(len(get_transient_lab().clearing_choices), used_choice_indices)
+
+
 def list_guided_cases() -> tuple[GuidedCaseSummaryDTO, ...]:
     """List H25 guided cases without revealing hints, answers, or solutions."""
     return tuple(_guided_summary(case) for case in default_guided_cases())

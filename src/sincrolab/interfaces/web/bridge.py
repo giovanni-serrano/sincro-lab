@@ -54,6 +54,14 @@ def _configuration(value: object) -> portable.SimulationConfigDTO:
 def dispatch(operation: str, payload: object = None) -> object:
     """Return canonical JSON-friendly payloads without presentation rounding."""
     data = _mapping({} if payload is None else payload)
+    if operation == "phenomenon_run":
+        if set(data) != {"clearing_choice_index", "prediction"}:
+            raise ValueError("Unexpected phenomenon request fields")
+        return portable.run_phenomenon(data["clearing_choice_index"], data["prediction"])
+    if operation == "phenomenon_transfer":
+        if set(data) != {"used_choice_indices"}:
+            raise ValueError("Unexpected transfer request fields")
+        return portable.prepare_phenomenon_transfer(data["used_choice_indices"])
     if operation == "transient_lab":
         result = portable.get_transient_lab()
     elif operation == "transient_lab_run":

@@ -74,3 +74,67 @@
 .lab-scope { font-size:.8rem; color:var(--muted); max-width:none; margin-top:20px; }
 @media(max-width:1100px) { .lab-work.with-cause { grid-template-columns:minmax(0,1fr); } .lab-cause { border-left:0; border-top:1px solid var(--border); max-height:none; } #lab-balances { display:grid; grid-template-columns:1fr 1fr; gap:16px; } }
 @media(max-width:600px) { .lab-phenomenon { padding:12px 4px; } .lab-view-heading { align-items:flex-start; } .lab-angular { height:220px; } .lab-transport { flex-wrap:wrap; } .lab-scrub-label { flex-basis:100%; order:3; } .lab-prediction label { display:flex; margin-bottom:10px; } .lab-events { padding-left:32px; } .lab-track-label { right:calc(100% + 5px); } .draft .lab-track-label { writing-mode:vertical-rl; top:0; } .lab-region { font-size:.75rem; } .lab-clear-handle { width:28px; } #lab-balances { grid-template-columns:1fr; } .lab-graph { padding:8px 0; } }
+
+/* The introductory experiment keeps its decision next to the observed machine. */
+.lab-experiment { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:24px; align-items:start; }
+.lab-decisions,.lab-work { min-width:0; }
+.lab-work { border:1px solid var(--border); border-radius:6px; }
+.lab-events { margin-top:0; }
+.lab-transport { flex-wrap:wrap; padding-bottom:4px; border:0; }
+.lab-scrub-label { flex-basis:100%; order:3; }
+.lab-prediction label { display:flex; margin:10px 0; }
+.lab-experiment-actions { display:block; }
+.lab-experiment-actions > button { width:100%; margin:4px 0 12px; }
+.lab-result { display:block; }
+.lab-observation { margin-top:12px; padding-top:12px; border-top:1px solid var(--border); font-size:.875rem; }
+.lab-observation h3 { font-size:.9rem; }
+.lab-observation p { margin-bottom:8px; }
+.lab-observation .lab-outcome { margin:8px 0; font-size:1rem; }
+.lab-observation details { margin:6px 0; }
+.lab-recorded-prediction { color:var(--muted); }
+.lab-confrontation { font-weight:500; }
+.lab-plot-actions { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.lab-plot-actions button { font-size:.85rem; }
+.lab-plot-actions [aria-pressed=true] { background:var(--accent-soft); border-color:var(--accent); }
+.lab-plot-note,.lab-cursor-note { font-size:.8rem; margin:8px 0 0; max-width:none; }
+.lab-cursor-note { color:var(--event); }
+.lab-lesson { border-top:2px solid var(--accent); padding:20px 0; scroll-margin-top:16px; }
+.lab-lesson > p { font-size:.95rem; white-space:pre-line; }
+.lab-stage-question { font-weight:600; }
+.lab-cause { border:0; background:var(--surface); max-height:none; padding:12px; }
+#lab-balances { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.run-c { color:var(--lab-b); }
+@media(max-width:1100px) {
+  .lab-experiment { grid-template-columns:minmax(0,1fr); gap:16px; }
+  .lab-angular { height:155px; }
+  .lab-phenomenon { padding:8px 12px; }
+  .lab-prediction label { display:inline-flex; margin-right:16px; }
+  .lab-work .lab-transport { padding-top:6px; }
+}
+@media(max-width:600px) {
+  .transient-lab h1 { font-size:1.4rem; }
+  .lab-prompt { font-size:.875rem; }
+  .lab-angular { height:125px; }
+  .lab-view-heading h2 { font-size:.85rem; }
+  .lab-readouts { font-size:.75rem; }
+  .lab-system { width:100%; }
+  .lab-transport { gap:6px; }
+  .lab-transport button { min-height:36px; padding:.3rem .6rem; }
+  .lab-transport > span { font-size:.65rem; }
+  .lab-prediction label { display:flex; margin:10px 0; }
+  .lab-experiment { gap:12px; }
+  .lab-experiment-actions { margin-top:8px; }
+  .lab-systems { display:none; }
+  #lab-balances { grid-template-columns:1fr; }
+  .lab-graph { margin-top:12px; }
+}
+
+.lab-reference { display:none; }
+.lab-definition { margin:4px 0; border:0; padding:0; font-size:.8rem; }
+.lab-definition summary { padding:2px 0; font-weight:400; }
+.lab-definition p { margin-top:8px; }
+.run-c .lab-power-rail i { background:var(--lab-b); }
+@media(max-width:600px) {
+  .lab-angular text { display:none; }
+  .lab-reference { display:block; font-size:.75rem; margin:0 0 8px; }
+}

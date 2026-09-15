@@ -144,11 +144,14 @@ function renderHome() {
   leaveLab();
   session.page = "home";
   view.replaceChildren(element("p", "LABORATORIO DE ESTABILIDAD TRANSITORIA", "eyebrow"),
-    element("h1", "Comprende la respuesta del rotor"),
-    element("p", "Explora el modelo clásico de una máquina conectada a una barra infinita. Observa, predice y compara el efecto de tu intervención.", "home-intro muted"));
-  const hero = element("div", undefined, "home-hero"); hero.append(diagram("smib"));
-  const links = actions(button("Experimentar con el tiempo →", openLab, { primary:true, id:"open-transient-lab" }),
-    button("Comenzar a aprender →", () => renderLearn(), { primary:true }),
+    element("h1", "Una misma falla. ¿El mismo desenlace?"),
+    element("p", "Observa un generador respecto de la red. Predice qué pasará, cambia cuánto dura una falla y descubre por qué cambia el movimiento.", "home-intro muted"));
+  const hero = element("div", undefined, "home-hero");
+  hero.append(element("p", "EMPIEZA AQUÍ · RECORRIDO PARA PRINCIPIANTES", "eyebrow"),
+    element("h2", "Primero observa. Después explica."),
+    element("p", "No necesitas conocer la ecuación de movimiento. Una comparación y una pregunta bastan para comenzar."));
+  const links = actions(button("Comenzar el experimento →", openLab, { primary:true, id:"open-transient-lab" }),
+    button("Consultar fundamentos →", () => renderLearn()),
     button("Explorar casos guiados →", renderCatalog), button("Modo libre →", openFree));
   links.className = "home-actions";
   const path = element("ol");
@@ -180,6 +183,7 @@ function renderLearn(topicId = session.content.topics[0].topic_id) {
   leaveLab();
   session.page = "learn";
   view.replaceChildren(element("p", "APRENDER", "eyebrow"), element("h1", "Fundamentos y modelo"));
+  if (labMemory.a) view.append(button("← Volver a mi experimento", openLab, { id:"theory-return-lab" }));
   if (session.case) {
     const index = session.content.cases.findIndex(item => item.case_id === session.case.case_id);
     const back = button(`← Volver al Caso ${index + 1} · ${session.phase}`, renderCase, { id:"theory-return-case" });
@@ -302,8 +306,27 @@ function renderPredict() {
   const start = view.children.length;
   renderPreparation(true);
   view.append(element("p", session.case.prediction_prompt));
-  if (session.changes.length) view.append(table(["Configuración del próximo intento", "Valor"], session.changes.map(x => [quantityLabel(x.key), x.value])));
-  else view.append(element("p", "Se ejecutará la configuración inicial del caso.", "muted"));
+  const needsChange = session.case.kind === "inertia_effect";
+  if (needsChange) {
+    const parameter = session.case.editable_parameters[0];
+    const value = session.changes.find(item => item.key === parameter.key)?.value ?? parameter.baseline_value;
+    const editor = numericField(parameter.key, "Inercia del próximo intento", value, parameter);
+    editor.id = "prediction-intervention";
+    editor.append(element("small", 'Configuración inicial: ' + parameter.baseline_value + ' s. Elige un valor distinto para comparar dos respuestas.'));
+    editor.querySelector("input").addEventListener("input", event => {
+      const input = event.target, next = input.valueAsNumber;
+      session.changes = input.checkValidity() && next !== parameter.baseline_value ? [{ key:parameter.key, value:next }] : [];
+      session.prediction = "";
+      document.querySelectorAll("#prediction input").forEach(radio => { radio.checked = false; });
+      document.querySelector("#run-guided").dataset.locked = "true";
+      updateControls();
+    });
+    view.append(editor);
+  }
+  if (!needsChange) {
+    if (session.changes.length) view.append(table(["Configuración del próximo intento", "Valor"], session.changes.map(x => [quantityLabel(x.key), x.value])));
+    else view.append(element("p", "Se ejecutará la configuración inicial del caso.", "muted"));
+  }
   const choices = element("fieldset", undefined, "prediction-choices"); choices.id = "prediction";
   choices.append(element("legend", "Tu predicción, antes de simular"));
   for (const option of session.case.prediction_options) {
@@ -314,20 +337,23 @@ function renderPredict() {
     description.append(element("strong", meaning(option).label), element("small", meaning(option).description));
     radio.addEventListener("change", () => {
       session.prediction = radio.value;
-      document.querySelector("#run-guided").dataset.locked = String(!session.prediction);
+      document.querySelector("#run-guided").dataset.locked = String(!session.prediction || (needsChange && !session.changes.length));
       updateControls();
     });
     choice.append(radio, description); choices.append(choice);
   }
   view.append(choices);
   if (session.solution) view.append(solutionPanel());
-  view.append(button("Simular con esta predicción", runGuided, { primary:true, locked:!session.prediction, id:"run-guided" }));
+  view.append(button("Simular con esta predicción", runGuided, { primary:true, locked:!session.prediction || (needsChange && !session.changes.length), id:"run-guided" }));
   const columns = element("div", undefined, "prediction-layout");
   const nodes = [...view.children].slice(start), action = element("div", undefined, "prediction-action");
   columns.append(nodes[0]); action.append(...nodes.slice(1)); columns.append(action); view.append(columns);
 }
 async function runGuided() {
   if (!session.case.prediction_options.includes(session.prediction)) throw { kind:"invalid_input" };
+  if (session.case.kind === "inertia_effect" && !session.changes.length) {
+    throw { userMessage:"Elige una inercia distinta antes de comparar las respuestas." };
+  }
   // Snapshot before execution; the result's prediction is never reconstructed from UI state.
   const request = { schema_version:session.case.schema_version, case_id:session.case.case_id,
     prediction:session.prediction, changes:structuredClone(session.changes),
@@ -357,6 +383,18 @@ function curves() {
     { name:"Intento", trajectory:session.result.attempted_evaluation.trajectory, configuration:session.result.attempted_evaluation.configuration }];
 }
 function renderResult() {
+  if (session.case.kind === "inertia_effect") {
+    const comparison = session.result.scientific_comparison;
+    const confrontation = element("section"); confrontation.id = "inertia-confrontation";
+    confrontation.append(element("h3", "Contrasta tu predicción"),
+      element("p", `Tu predicción: ${meaning(session.result.prediction).label}`),
+      table(["Evidencia calculada", "Inicial", "Intento"], [
+        [quantityLabel("max_delta_rad"), comparison.baseline_max_delta_rad, comparison.attempted_max_delta_rad],
+        [quantityLabel("max_abs_omega_dev_pu"), comparison.baseline_max_abs_omega_dev_pu, comparison.attempted_max_abs_omega_dev_pu],
+      ]), element("p", session.result.debrief_summary),
+      element("p", "¿Qué evidencia respalda o contradice tu predicción? Contrasta ambas métricas."));
+    view.append(confrontation);
+  }
   view.append(element("p", `Predicción registrada: ${meaning(session.result.prediction).label}`),
     evaluationPanel(session.result.attempted_evaluation, curves()),
     element("h3", "Qué observar"), element("p", guidance().observe),
@@ -498,6 +536,9 @@ async function openLab() {
   session.labDefinition ??= await runtime.call("transient_lab");
   session.page = "lab";
   labMemory.call = (operation, payload) => runtime.call(operation, payload);
+  labMemory.openTheory = () => perform(() => renderLearn("swing-equation"));
+  labMemory.synchronism = session.content.topics.find(topic => topic.topic_id === "synchronous-generator")
+    .blocks.find(block => block.kind === "key-idea").text;
   labView = mountTransientLab(view, session.labDefinition, labMemory, perform);
   updateControls();
 }

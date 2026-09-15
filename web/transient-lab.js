@@ -37,11 +37,14 @@ export function mountTransientLab(host, lab, memory, execute) {
   state.index ??= 0;
   state.reveal ??= 0;
   state.prediction ??= "";
+  state.lessons ??= {};
+  state.usedChoices ??= [];
+  state.plotMode ??= "first";
   let frame = 0, playing = false, disposed = false;
   const root = node("section", undefined, "transient-lab");
   root.id = "transient-lab";
   root.append(node("p", "EXPERIMENTO · UNA MISMA FALLA", "eyebrow"),
-    node("h1", "¿Cuánto puede cambiar una fracción de segundo?"));
+    node("h1", "¿Volverá después de la falla?"));
   const prompt = node("p", undefined, "lab-prompt");
   root.append(prompt);
   const work = node("div", undefined, "lab-work");
@@ -60,13 +63,14 @@ export function mountTransientLab(host, lab, memory, execute) {
   const markers = svg("g"); angular.append(trails, markers);
   const readouts = node("div", undefined, "lab-readouts"); readouts.id = "lab-readouts";
   const systems = node("div", undefined, "lab-systems"); systems.id = "lab-systems";
-  phenomenon.append(heading, angular, readouts, systems);
+  const referenceCaption = node("p", "Línea punteada: referencia de la red", "lab-reference");
+  phenomenon.append(heading, angular, referenceCaption, readouts, systems);
   const causePanel = node("aside", undefined, "lab-cause"); causePanel.hidden = true; causePanel.tabIndex = 0; causePanel.setAttribute("aria-label", "Causa y nombres formales");
   causePanel.append(node("h2", "¿Qué impulsa el movimiento?"));
   const balances = node("div"); balances.id = "lab-balances";
   const formal = node("p", undefined, "lab-formal"); formal.hidden = true;
   causePanel.append(balances, formal);
-  work.append(phenomenon, causePanel); root.append(work);
+  work.append(phenomenon); root.append(work);
 
   const events = node("section", undefined, "lab-events");
   events.append(node("h2", "Duración de la falla"));
@@ -104,9 +108,12 @@ export function mountTransientLab(host, lab, memory, execute) {
   scrub.addEventListener("input", () => { pause(); state.index = Number(scrub.value); paint(); });
   scrubLabel.append(scrub);
   transport.append(play, reset, scrubLabel, node("span", "Cámara lenta · 0.35×", "muted"));
-  root.append(transport);
+  phenomenon.append(transport);
   const prediction = node("fieldset", undefined, "lab-prediction"); prediction.id = "lab-prediction";
   prediction.append(node("legend", "Antes de simular, ¿qué crees que ocurrirá?"));
+  const synchronism = node("details", undefined, "lab-definition");
+  synchronism.append(node("summary", "¿Qué significa mantenerse sincronizado?"), node("p", state.synchronism));
+  prediction.append(synchronism);
   for (const value of lab.prediction_options) {
     const label = node("label"); const input = node("input");
     input.type = "radio"; input.name = "lab-prediction"; input.value = value; input.checked = state.prediction === value;
@@ -116,17 +123,25 @@ export function mountTransientLab(host, lab, memory, execute) {
   const run = button("lab-run", "Simular primera corrida", async () => {
     pause();
     await execute(async () => {
-      const result = await state.call("transient_lab_run", { clearing_choice_index:state.choice, prediction:state.prediction });
-      if (!state.a) state.a = result;
-      else { state.b = result; state.observedB = false; }
-      state.compare = false; state.compared = false; state.index = 0; state.prediction = ""; state.reveal = 0;
+      const result = await state.call("phenomenon_run", { clearing_choice_index:state.choice, prediction:state.prediction });
+      const label = state.transferPending ? "C" : state.a ? "B" : "A";
+      if (label === "B") { delete state.c; delete state.lessons.C; }
+      state[label.toLowerCase()] = result.run;
+      state.lessons[label] = result.lesson;
+      state.usedChoices.push(state.choice);
+      state.observedA = Boolean(state.a); state.observedB = Boolean(state.b);
+      state.transferDone = label === "C";
+      state.transferPending = false;
+      state.compare = label !== "A"; state.compared = state.compare;
+      state.index = 0; state.prediction = ""; state.plotMode = "first";
       prediction.querySelectorAll("input").forEach(input => { input.checked = false; });
       paint(); start();
+      resultBox.scrollIntoView({ block:"nearest" });
     });
   }); run.className = "primary";
   const experimentActions = node("div", undefined, "lab-experiment-actions"); experimentActions.append(prediction, run);
   root.append(experimentActions);
-  const resultBox = node("div", undefined, "lab-result"); resultBox.id = "lab-result"; resultBox.setAttribute("role", "status");
+  const resultBox = node("div", undefined, "lab-result"); resultBox.id = "lab-result"; resultBox.setAttribute("aria-live", "polite");
   const revealActions = node("div", undefined, "lab-reveal-actions");
   const compare = button("lab-compare", "Comparar corridas", () => {
     pause(); state.compare = !state.compare; state.index = 0; paint();
@@ -134,34 +149,79 @@ export function mountTransientLab(host, lab, memory, execute) {
   const inspect = button("lab-inspect", "Inspeccionar el primer despeje", () => {
     pause(); state.index = sampleIndex(state.a.playhead_time_s, state.a.evaluation.configuration.network.t_clear_s); paint();
   });
-  const revealCause = button("lab-reveal-cause", "Mostrar causa", () => { state.reveal = 1; paint(); });
-  const revealAngle = button("lab-reveal-angle", "Dar nombre al ángulo", () => { state.reveal = 2; paint(); });
-  const revealPlot = button("lab-reveal-plot", "Ver el movimiento en una gráfica", () => { state.reveal = 3; paint(); });
-  revealActions.append(compare, inspect, revealCause, revealAngle, revealPlot);
+  const longer = button("lab-longer", "Cambiar la duración y predecir otra vez", () => {
+    state.compare = false; setChoice(lab.clearing_choices.length - 1);
+    prediction.scrollIntoView({ block:"center" });
+  });
+  const revealCause = button("lab-reveal-cause", "¿Por qué ocurre? Seguir la explicación", () => {
+    pause(); state.reveal = 1;
+    state.index = state.lessons.A.clearing_index; paint();
+    lessonPanel.scrollIntoView({ block:"start" });
+  });
+  revealActions.append(longer, compare, inspect, revealCause);
   root.append(resultBox, revealActions);
   const graph = node("figure", undefined, "lab-graph"); graph.id = "lab-graph"; graph.hidden = true;
-  const graphTitle = node("figcaption", "Ángulo del rotor en el tiempo · δ(t)");
-  const plot = svg("svg", { viewBox:"0 0 800 240", role:"img", "aria-label":"Ángulo continuo de ambas corridas, con el mismo instante seleccionado" });
-  graph.append(graphTitle, plot); root.append(graph);
+  const graphTitle = node("figcaption", "Evidencia · separación angular en el tiempo");
+  const plot = svg("svg", { viewBox:"0 0 800 260", role:"img", "aria-label":"Separación angular continua, en grados, sobre una escala común" });
+  const plotActions = node("div", undefined, "lab-plot-actions");
+  const firstView = button("lab-first-view", "Primera oscilación", () => { pause(); state.plotMode = "first"; paint(); });
+  const fullView = button("lab-full-view", "Trayectoria completa", () => { pause(); state.plotMode = "full"; paint(); });
+  plotActions.append(firstView, fullView);
+  const plotNote = node("p", undefined, "lab-plot-note"); plotNote.id = "lab-plot-note";
+  const cursorNote = node("p", undefined, "lab-cursor-note"); cursorNote.id = "lab-cursor-note";
+  graph.append(graphTitle, plotActions, plot, plotNote, cursorNote); root.append(graph);
+  const lessonPanel = node("section", undefined, "lab-lesson"); lessonPanel.id = "lab-lesson";
+  const stageTitle = node("h2"), stageText = node("p"), stageQuestion = node("p", undefined, "lab-stage-question");
+  const nextStage = button("lab-next-explanation", "Continuar", () => {
+    pause(); state.reveal += 1; paint(); lessonPanel.scrollIntoView({ block:"start" });
+  });
+  const previousStage = button("lab-previous-explanation", "← Paso anterior", () => { state.reveal -= 1; paint(); });
+  const theory = button("lab-theory", "Profundizar en la ecuación", () => state.openTheory());
+  const transfer = button("lab-transfer", "Probar una situación nueva →", async () => {
+    pause();
+    await execute(async () => {
+      const draft = await state.call("phenomenon_transfer", { used_choice_indices:state.usedChoices });
+      if (draft.choice_index === null) return;
+      state.transferPrompt = draft.prompt; state.transferPending = true; state.transferDone = false;
+      state.choice = draft.choice_index; state.prediction = ""; state.compare = false; state.index = 0;
+      prediction.querySelectorAll("input").forEach(input => { input.checked = false; });
+      paint(); experiment.scrollIntoView({ block:"start" });
+    });
+  });
+  const stageActions = node("div", undefined, "lab-reveal-actions");
+  stageActions.append(previousStage, nextStage, theory, transfer);
+  lessonPanel.append(stageTitle, stageText, stageQuestion, causePanel, stageActions);
+  root.append(lessonPanel);
   const closing = node("p", "Si ambas corridas empiezan igual, ¿por qué despejar la falla no hace que el generador vuelva inmediatamente a su posición inicial?", "lab-closing"); closing.hidden = true;
   const scope = node("p", lab.limitation, "lab-scope"); scope.hidden = true;
-  root.append(closing, scope); host.replaceChildren(root);
+  root.append(closing, scope);
+  const experiment = node("div", undefined, "lab-experiment");
+  const decisions = node("div", undefined, "lab-decisions");
+  decisions.append(events, experimentActions, resultBox);
+  experiment.append(work, decisions); root.insertBefore(experiment, revealActions);
+  host.replaceChildren(root);
 
-  function runs() { return state.compare ? [["A", state.a], ["B", state.b]] : [[state.b ? "B" : "A", state.b ?? state.a]]; }
-  function current() { return state.b ?? state.a; }
+  function currentLabel() { return state.c ? "C" : state.b ? "B" : "A"; }
+  function runs() {
+    if (state.transferPending) return [["C", null]];
+    return state.compare ? [["A", state.a], [currentLabel(), current()]] : [[currentLabel(), current()]];
+  }
+  function current() { return state.transferPending ? null : state.c ?? state.b ?? state.a; }
   function pause() { playing = false; cancelAnimationFrame(frame); play.textContent = "Reproducir"; }
   function start() {
     if (!current() || disposed) return;
     pause();
     const times = current().playhead_time_s;
-    if (state.index === times.length - 1) state.index = 0;
+    const finish = state.plotMode === "first" ?
+      Math.max(...runs().map(([label]) => state.lessons[label].first_swing_end_index)) : times.length - 1;
+    if (state.index >= finish) state.index = 0;
     playing = true; play.textContent = "Pausar";
     const startWall = performance.now(), startTime = times[state.index];
     function tick(now) {
       if (!playing || disposed) return;
-      state.index = sampleIndex(times, startTime + (now - startWall) / 1000 * 0.35);
+      state.index = Math.min(finish, sampleIndex(times, startTime + (now - startWall) / 1000 * 0.35));
       paint();
-      if (state.index === times.length - 1) pause();
+      if (state.index === finish) pause();
       else frame = requestAnimationFrame(tick);
     }
     frame = requestAnimationFrame(tick);
@@ -170,6 +230,7 @@ export function mountTransientLab(host, lab, memory, execute) {
     if (!state.observedA || state.compare || handle.disabled) return;
     const next = Math.max(0, Math.min(lab.clearing_choices.length - 1, index));
     if (state.choice === next) return;
+    state.transferDone = false;
     pause(); state.choice = next; state.prediction = "";
     prediction.querySelectorAll("input").forEach(input => { input.checked = false; });
     paint();
@@ -197,18 +258,27 @@ export function mountTransientLab(host, lab, memory, execute) {
 
   function refreshControls() {
     const hasRun = Boolean(current());
+    transport.hidden = !hasRun;
+    readouts.hidden = !hasRun;
     lock(play, !hasRun); lock(reset, !hasRun); lock(scrub, !hasRun);
-    lock(handle, !state.observedA || Boolean(state.compare));
-    lock(run, !lab.prediction_options.includes(state.prediction) || Boolean(state.compare) || Boolean(state.a && !state.observedA));
-    lock(compare, !state.observedA || !state.observedB);
+    lock(handle, !state.observedA || Boolean(state.compare) || Boolean(state.transferPending));
+    lock(run, !lab.prediction_options.includes(state.prediction) || Boolean(state.compare) ||
+      Boolean(state.a && !state.transferPending && state.choice === state.a.clearing_choice_index));
+    lock(compare, !state.observedA || !state.observedB || Boolean(state.transferPending));
     inspect.hidden = !state.compare;
+    compare.hidden = !state.b || Boolean(state.transferPending);
     compare.textContent = state.compare ? "Volver a experimentar" : "Comparar corridas";
-    revealCause.hidden = !state.compared || state.reveal >= 1;
-    revealAngle.hidden = state.reveal !== 1;
-    revealPlot.hidden = state.reveal !== 2;
-    run.textContent = state.a ? "Simular nueva duración" : "Simular primera corrida";
-    prediction.hidden = Boolean(state.compare) || Boolean(state.a && !state.observedA);
+    longer.hidden = !state.a || Boolean(state.b) || Boolean(state.transferPending);
+    revealCause.hidden = !state.compared || state.reveal >= 1 || Boolean(state.transferPending);
+    run.textContent = state.transferPending ? "Confirmar predicción y probar" : state.a ? "Simular nueva duración" : "Confirmar predicción y simular";
+    prediction.hidden = Boolean(state.compare);
     run.hidden = prediction.hidden;
+    previousStage.hidden = state.reveal <= 1;
+    nextStage.hidden = state.reveal >= 6;
+    theory.hidden = state.reveal !== 6;
+    transfer.hidden = state.reveal !== 6 || Boolean(state.transferDone);
+    firstView.setAttribute("aria-pressed", String(state.plotMode === "first"));
+    fullView.setAttribute("aria-pressed", String(state.plotMode === "full"));
   }
 
   function track(label, clear, kind) {
@@ -245,19 +315,22 @@ export function mountTransientLab(host, lab, memory, execute) {
     if (state.compare) state.compared = true;
     root.dataset.comparing = Boolean(state.compare);
     root.dataset.sampleIndex = state.index;
-    prompt.textContent = !state.a ? "Observa la referencia fija y el generador. Predice qué pasará cuando ocurra la falla." :
-      !state.observedA ? "Sigue el movimiento después del despeje. Puedes pausar o recorrer el tiempo." :
-      state.compare ? "Dos corridas, el mismo reloj. Recorre el primer despeje para ver dónde cambian sus historias." :
-      `Arrastra el final de la región Falla hasta ${seconds(lab.clearing_choices.at(-1).fault_duration_s)}. Predice otra vez y observa qué cambia.`;
+    prompt.textContent = state.transferPending ? state.transferPrompt : !state.a ?
+      "La aguja muestra la separación respecto de la red, no el giro del eje. Una falla alterará la transferencia eléctrica. Predice qué pasará." :
+      state.transferDone ? "Situación nueva: contrasta tu predicción para C con la evidencia. A conserva la corrida inicial." :
+      state.compare ? "Misma máquina y misma falla; solo cambió cuánto duró. Compara el primer movimiento y después busca su causa." :
+      "Cambia solo la duración. La corrida anterior conserva su resultado; la nueva necesita tu predicción.";
     const choice = lab.clearing_choices[state.choice];
-    duration.textContent = state.compare ? `A ${seconds(state.a.fault_duration_s)} · B ${seconds(state.b.fault_duration_s)}` : seconds(choice.fault_duration_s);
-    eventTimes.textContent = state.compare ? `Aplicación: ${seconds(faultTime)} · Despeje A: ${seconds(state.a.evaluation.configuration.network.t_clear_s)} · B: ${seconds(state.b.evaluation.configuration.network.t_clear_s)}` : `Aplicación: ${seconds(faultTime)} · Despeje absoluto: ${seconds(choice.t_clear_s)}`;
+    const compared = state.c ?? state.b;
+    const comparedLabel = state.c ? "C" : "B";
+    duration.textContent = state.compare ? `A ${seconds(state.a.fault_duration_s)} · ${comparedLabel} ${seconds(compared.fault_duration_s)}` : seconds(choice.fault_duration_s);
+    eventTimes.textContent = state.compare ? `Aplicación: ${seconds(faultTime)} · Despeje A: ${seconds(state.a.evaluation.configuration.network.t_clear_s)} · ${comparedLabel}: ${seconds(compared.evaluation.configuration.network.t_clear_s)}` : `Aplicación: ${seconds(faultTime)} · Despeje absoluto: ${seconds(choice.t_clear_s)}`;
     handle.style.left = `${percent(choice.t_clear_s)}%`;
     handle.setAttribute("aria-valuenow", choice.fault_duration_s);
     handle.setAttribute("aria-valuetext", `Duración ${seconds(choice.fault_duration_s)}; despeje ${seconds(choice.t_clear_s)}`);
     rows.replaceChildren();
     if (state.compare) {
-      rows.append(track("A",state.a.evaluation.configuration.network.t_clear_s,"run-a"),track("B",state.b.evaluation.configuration.network.t_clear_s,"run-b"));
+      rows.append(track("A",state.a.evaluation.configuration.network.t_clear_s,"run-a"),track(comparedLabel,compared.evaluation.configuration.network.t_clear_s,"run-b"));
     } else if (state.a && state.observedA) {
       rows.append(track("A",state.a.evaluation.configuration.network.t_clear_s,"run-a"),track("Preparada",choice.t_clear_s,"draft"));
     } else rows.append(track("A",choice.t_clear_s,"run-a"));
@@ -266,7 +339,9 @@ export function mountTransientLab(host, lab, memory, execute) {
     timeCursor.style.left = `${Math.min(100, percent(time))}%`; timeCursor.hidden = !run || time > eventWindowEnd;
     editNote.textContent = state.compare ? "Las líneas verticales muestran los dos despejes; el cursor comparte el tiempo de ambas corridas." :
       !state.observedA ? "Primero observa la corrida A. Después podrás prolongar la misma falla." :
-      `Preparada: ${seconds(choice.fault_duration_s)}. ${state.b ? `Mostrando B: ${seconds(state.b.fault_duration_s)}.` : `Mostrando A: ${seconds(state.a.fault_duration_s)}.`} Arrastra ↔ o usa las flechas; Inicio/Fin llevan a los extremos.`;
+      state.transferPending ? "Nueva duración sin resultado. Registra tu predicción antes de simular." :
+      `Preparada: ${seconds(choice.fault_duration_s)}. Mostrando ${currentLabel()}: ${seconds(current().fault_duration_s)}. Arrastra ↔ o usa las flechas.`;
+    editNote.hidden = !state.a;
     markers.replaceChildren(); trails.replaceChildren(); readouts.replaceChildren(); systems.replaceChildren(); balances.replaceChildren();
     // A common presentation scale keeps identical input powers visually equal.
     const powerScale = Math.max(1, ...runs().flatMap(([,item]) => item ? [...item.mechanical_power_pu, ...item.electrical_power_pu].map(Math.abs) : []));
@@ -283,14 +358,14 @@ export function mountTransientLab(host, lab, memory, execute) {
       }
       const value = node("div", undefined, `run-${label.toLowerCase()}`);
       value.append(node("b", label), node("span", `${item?.relative_turns[index] ?? 0} vueltas completas`));
-      if (state.reveal >= 2) value.append(node("span", `δ = ${angle.toFixed(2)}°`));
+      if (state.reveal >= 5 && !state.transferPending) value.append(node("span", `δ = ${angle.toFixed(2)}°`));
       readouts.append(value);
       const network = item?.network_state[index] ?? "prefault";
       systems.append(system(label,network));
       if (state.reveal >= 1 && item) {
         const balance = node("div", undefined, `lab-balance run-${label.toLowerCase()}`); balance.dataset.run = label; balance.dataset.timeS = item.evaluation.trajectory.time_s[index];
         balance.append(node("h3", `Corrida ${label} · ${names[network]}`));
-        for (const [title, power] of [["Entrada mecánica",item.mechanical_power_pu[index]], ["Salida eléctrica",item.electrical_power_pu[index]]]) {
+        for (const [title, power] of [[state.reveal >= 2 ? "Entrada mecánica · Pm" : "Entrada mecánica",item.mechanical_power_pu[index]], [state.reveal >= 2 ? "Transferencia eléctrica · Pe" : "Transferencia eléctrica",item.electrical_power_pu[index]]]) {
           const line = node("div", undefined, "lab-power"); line.append(node("span", title),node("output",`${power.toFixed(3)} pu`));
           const rail = node("div", undefined, "lab-power-rail"); const bar = node("i");
           const scale = powerScale;
@@ -298,41 +373,108 @@ export function mountTransientLab(host, lab, memory, execute) {
           rail.append(bar); line.append(rail); balance.append(line);
         }
         balance.append(node("p", item.cause[index], "lab-causal-text"));
-        if (state.reveal >= 2) balance.append(node("p",`Pa = ${item.power_imbalance_pu[index].toFixed(3)} pu`));
+        if (state.reveal >= 3) balance.append(node("p",`Pa = ${item.power_imbalance_pu[index].toFixed(3)} pu`));
+        if (state.reveal >= 4) balance.append(node("p",`Δω = ${item.evaluation.trajectory.omega_dev_pu[index].toFixed(6)} pu`));
         balances.append(balance);
       }
     }
-    causePanel.hidden = state.reveal < 1; work.classList.toggle("with-cause",state.reveal >= 1);
-    formal.hidden = state.reveal < 2; formal.textContent = run?.formal_explanation ?? "";
-    viewTitle.textContent = state.reveal >= 2 ? "Ángulo del rotor — δ" : "El generador respecto de la red";
-    graph.hidden = state.reveal < 3; closing.hidden = state.reveal < 3; scope.hidden = !state.observedA;
-    if (state.reveal >= 3) paintPlot();
-    resultBox.replaceChildren();
-    for (const [label,item] of runs()) if (item && (label === "A" ? state.observedA : state.observedB)) {
-      const outcome = node("p", `${label} · ${outcomes[item.evaluation.first_swing.status] ?? "Resultado no disponible"}`, "lab-outcome");
-      outcome.dataset.status = item.evaluation.first_swing.status; resultBox.append(outcome);
+    causePanel.hidden = state.reveal < 1 || state.reveal === 6 || state.transferPending;
+    formal.hidden = true;
+    lessonPanel.hidden = state.reveal < 1 || state.transferPending;
+    const lesson = state.lessons[currentLabel()];
+    if (!lessonPanel.hidden && lesson) {
+      const stage = lesson.stages[state.reveal - 1];
+      lessonPanel.dataset.stage = stage.id;
+      stageTitle.textContent = stage.title; stageText.textContent = stage.text;
+      stageQuestion.textContent = stage.question;
+    }
+    viewTitle.textContent = state.reveal >= 5 && !state.transferPending ? "Ángulo del rotor — δ" : "El generador respecto de la red";
+    graph.hidden = !run; closing.hidden = !state.transferDone; scope.hidden = !run;
+    if (state.transferDone) closing.textContent = lesson.transfer_reflection;
+    if (run) paintPlot();
+    // Keep the live region stable during playback; only a new run or selection
+    // changes this summary, never every animation frame.
+    const resultKey = JSON.stringify([state.compare, state.usedChoices, state.transferPending]);
+    if (resultBox.dataset.key !== resultKey) {
+      resultBox.dataset.key = resultKey; resultBox.replaceChildren();
+      for (const [label,item] of runs()) if (item) {
+        const note = state.lessons[label];
+        const card = node("section", undefined, "lab-observation"); card.dataset.run = label;
+        card.append(node("h3", `Corrida ${label} · falla de ${seconds(item.fault_duration_s)}`));
+        card.append(node("p", `Tu predicción: ${note.prediction}`, "lab-recorded-prediction"));
+        const outcome = node("p", outcomes[item.evaluation.first_swing.status] ?? "Resultado no disponible", "lab-outcome");
+        outcome.dataset.status = item.evaluation.first_swing.status;
+        card.append(outcome, node("p", note.outcome), node("p", note.confrontation, "lab-confrontation"));
+        const detail = node("details"); detail.append(node("summary", "Evidencia de esta corrida"),
+          node("p", note.evidence), node("p", note.clearing_evidence), node("p", note.why));
+        card.append(detail);
+        if (state.compare && label === "A") {
+          const prior = node("details", undefined, "lab-prior-result");
+          prior.append(node("summary", "A · Ver predicción y evidencia de la corrida inicial"), card);
+          resultBox.append(prior);
+        } else resultBox.append(card);
+      }
     }
     refreshControls();
   }
   function paintPlot() {
     plot.replaceChildren();
     const selected = runs().filter(([,item]) => item);
-    const values = selected.flatMap(([,item]) => item.angle_deg);
+    const last = state.plotMode === "full" ? current().angle_deg.length - 1 :
+      Math.max(...selected.map(([label]) => state.lessons[label].first_swing_end_index));
+    const values = selected.flatMap(([,item]) => item.angle_deg.slice(0,last+1));
     const min = Math.min(...values), max = Math.max(...values), span = max-min || 1;
-    const start = current().playhead_time_s[0], end = current().playhead_time_s.at(-1);
-    const x = t => 65 + (t-start)/(end-start)*715;
-    const y = value => 195-(value-min)/span*170;
-    plot.append(svg("path",{d:"M65 20V195H780",fill:"none",stroke:"var(--muted)"}));
-    for (const [text,tx,ty] of [[`${max.toFixed(1)}°`,0,30],[`${min.toFixed(1)}°`,0,195],[`${start} s`,65,220],[`${end} s`,755,220]]) {
-      const label = svg("text",{x:tx,y:ty,"font-size":14,fill:"var(--muted)"}); label.textContent=text; plot.append(label);
+    const start = current().evaluation.trajectory.time_s[0];
+    const end = Math.max(...selected.map(([,item]) => item.evaluation.trajectory.time_s[last]));
+    const width = Math.max(300, graph.clientWidth - 28), right = width-14, top = 60, bottom = 210;
+    plot.setAttribute("viewBox", `0 0 ${width} 260`);
+    plot.dataset.startS = start; plot.dataset.endS = end; plot.dataset.mode = state.plotMode;
+    plot.dataset.minAngleDeg = min; plot.dataset.maxAngleDeg = max;
+    const x = t => 58 + (t-start)/(end-start)*(right-58);
+    const y = value => bottom-(value-min)/span*(bottom-top);
+    function label(text, tx, ty, anchor = "start") {
+      const textNode = svg("text",{x:tx,y:ty,"font-size":12,"text-anchor":anchor,fill:"var(--muted)"});
+      textNode.textContent = text; plot.append(textNode);
     }
-    for (const [label,item] of selected) {
-      const color = label === "A" ? "var(--accent)" : "var(--lab-b)";
-      plot.append(svg("polyline",{points:item.angle_deg.map((value,i)=>`${x(item.playhead_time_s[i])},${y(value)}`).join(" "),fill:"none",stroke:color,"stroke-width":1.5}));
-      plot.append(svg("circle",{cx:x(item.playhead_time_s[state.index]),cy:y(item.angle_deg[state.index]),r:4,fill:color,"data-plot-run":label,"data-time-s":item.evaluation.trajectory.time_s[state.index]}));
+    plot.append(svg("path",{d:`M58 ${top}V${bottom}H${right}`,fill:"none",stroke:"var(--muted)"}));
+    label("Separación angular (°)",58,15);
+    for (let i=0;i<=3;i++) {
+      const value = min + span*i/3;
+      label(value.toFixed(1),50,y(value)+4,"end");
+      if (i) plot.append(svg("path",{d:`M58 ${y(value)}H${right}`,stroke:"var(--border)"}));
     }
-    plot.append(svg("path",{d:`M${x(current().playhead_time_s[state.index])} 20V195`,stroke:"var(--muted)","stroke-dasharray":"4 3"}));
+    label(start.toFixed(3),58,229);
+    label(((start+end)/2).toFixed(3),x((start+end)/2),229,"middle");
+    label(end.toFixed(3),right,229,"end"); label("Tiempo (s)",right,251,"end");
+    for (const [text,time,row,color] of [
+      ["Falla",faultTime,0,"var(--event)"],
+      ...selected.map(([key,item],i)=>["Despeje "+key,item.evaluation.configuration.network.t_clear_s,i+1,key==="A"?"var(--accent)":"var(--lab-b)"])
+    ]) if (time <= end) {
+      plot.append(svg("path",{d:`M${x(time)} ${top}V${bottom}`,stroke:color,"stroke-dasharray":"3 4","data-event-time-s":time}));
+      label(text,x(time),29+row*13,"middle");
+    }
+    for (const [key,item] of selected) {
+      const color = key === "A" ? "var(--accent)" : "var(--lab-b)";
+      const originalTimes = item.evaluation.trajectory.time_s;
+      plot.append(svg("polyline",{
+        points:item.angle_deg.slice(0,last+1).map((value,i)=>`${x(originalTimes[i])},${y(value)}`).join(" "),
+        fill:"none",stroke:color,"stroke-width":2,"data-curve-run":key,"data-sample-count":last+1
+      }));
+      if (state.index <= last) plot.append(svg("circle",{
+        cx:x(originalTimes[state.index]),cy:y(item.angle_deg[state.index]),r:4,fill:color,
+        "data-plot-run":key,"data-time-s":originalTimes[state.index]
+      }));
+    }
+    if (state.index <= last) plot.append(svg("path",{
+      d:`M${x(current().evaluation.trajectory.time_s[state.index])} ${top}V${bottom}`,
+      stroke:"var(--muted)","stroke-dasharray":"4 3"
+    }));
+    plotNote.textContent = `${state.plotMode === "first" ? "Vista temporal parcial · primera oscilación" : "Trayectoria completa"}: ${seconds(start)}–${seconds(end)}. ${selected.map(([key])=>key).join(" / ")}: misma escala, valores originales en grados; ángulo continuo sin envolver.`;
+    cursorNote.hidden = state.index <= last;
+    cursorNote.textContent = "El instante seleccionado queda fuera de esta ventana. Usa Trayectoria completa o retrocede el cursor.";
   }
+  const resize = new ResizeObserver(() => { if (current()) paintPlot(); });
+  resize.observe(graph);
   paint();
-  return { destroy() { disposed = true; pause(); } };
+  return { destroy() { disposed = true; pause(); resize.disconnect(); } };
 }

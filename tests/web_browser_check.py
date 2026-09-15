@@ -8,6 +8,7 @@ Worker instrumentation observes messages without replacing computations.
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
 import hashlib
 import json
 import math
@@ -207,6 +208,9 @@ def main():
         capture("HOME")
         capture("RUNTIME_READY")
         requests = guided_requests()
+        requests = [replace(request, changes=(portable.ParameterValueDTO("H_s", 5.0),))
+                    if request.case_id == "controlled-inertia-effect" and not request.changes
+                    else request for request in requests]
         for request in requests[:3]:
             page.locator(f"#case-{request.case_id}").click()
             ready()
@@ -244,6 +248,12 @@ def main():
                 assert page.locator("#theory-topics").input_value() == key
                 page.locator("#theory-return-case").click()
                 assert page.locator("#run-guided").is_disabled()
+            if case.kind == "inertia_effect":
+                page.locator(f'#prediction input[value="{request.prediction}"]').check()
+                assert page.locator("#run-guided").is_disabled()
+                page.locator("#prediction-intervention input").fill("5")
+                assert page.locator("#prediction input:checked").count() == 0
+                assert "Se ejecutará la configuración inicial del caso." not in page.locator("#view").inner_text()
             page.locator(f'#prediction input[value="{request.prediction}"]').check()
             page.locator("#case-preparation summary").click()
             page.locator(f"#review-{preparation['topic_ids'][0]}").click()
@@ -252,6 +262,10 @@ def main():
             if request.case_id == "controlled-inertia-effect": capture("PREDICT")
             baseline = run_guided(request)
             if request.case_id == "controlled-inertia-effect":
+                assert baseline["changed_parameters"][0]["key"] == "H_s"
+                assert baseline["changed_parameters"][0]["attempted_value"] != baseline["changed_parameters"][0]["baseline_value"]
+                assert baseline["debrief_summary"] in page.locator("#inertia-confrontation").inner_text()
+                assert page.locator("#inertia-confrontation tbody tr").count() == 2
                 capture("RESULT")
                 page.locator("#phase-3").click()
                 assert page.locator(".editor input").count() == 1
@@ -274,7 +288,9 @@ def main():
             page.locator("#home-nav").click()
 
         page.locator("#case-controlled-inertia-effect").click(); ready()
-        page.locator("#begin-prediction").click(); run_guided(requests[1])
+        page.locator("#begin-prediction").click()
+        page.locator("#prediction-intervention input").fill("5")
+        run_guided(requests[1])
         page.locator("#phase-3").click()
         page.locator("#input-H_s").fill("5.75")
         for count in (1,2):
