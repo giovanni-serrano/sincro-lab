@@ -53,18 +53,19 @@ export function mountTransientLab(host, lab, memory, execute) {
   const viewTitle = node("h2", "El generador respecto de la red");
   const clock = node("output", "0.000 s", "lab-clock"); clock.id = "lab-time";
   heading.append(viewTitle, clock);
-  const angular = svg("svg", { viewBox:"70 32 335 200", role:"img", "aria-label":"Posición del generador respecto de una referencia síncrona fija", class:"lab-angular" });
+  const angular = svg("svg", { viewBox:"70 32 335 200", role:"img", "aria-label":"Adelanto angular del rotor en una vista que sigue el ciclo eléctrico de la red", class:"lab-angular" });
   const orbit = svg("circle", { cx:190, cy:132, r:92, fill:"none", stroke:"var(--border)", "stroke-width":1 });
   const reference = svg("path", { d:"M190 132H300", stroke:"var(--muted)", "stroke-width":1.5, "stroke-dasharray":"3 4" });
   const referenceText = svg("text", { x:302, y:128, fill:"var(--muted)", "font-size":14 }); referenceText.textContent = "Referencia";
-  const referenceText2 = svg("text", { x:302, y:146, fill:"var(--muted)", "font-size":14 }); referenceText2.textContent = "síncrona fija";
+  const referenceText2 = svg("text", { x:302, y:146, fill:"var(--muted)", "font-size":14 }); referenceText2.textContent = "de la red";
   angular.append(orbit, reference, referenceText, referenceText2, svg("circle", {cx:190,cy:132,r:3,fill:"var(--muted)"}));
   const trails = svg("g", {"aria-hidden":"true"});
   const markers = svg("g"); angular.append(trails, markers);
   const readouts = node("div", undefined, "lab-readouts"); readouts.id = "lab-readouts";
   const systems = node("div", undefined, "lab-systems"); systems.id = "lab-systems";
   const referenceCaption = node("p", "Línea punteada: referencia de la red", "lab-reference");
-  phenomenon.append(heading, angular, referenceCaption, readouts, systems);
+  const observation = node("div", undefined, "lab-observation-cues"); observation.id = "lab-observation-cues";
+  phenomenon.append(heading, angular, referenceCaption, readouts, systems, observation);
   const causePanel = node("aside", undefined, "lab-cause"); causePanel.hidden = true; causePanel.tabIndex = 0; causePanel.setAttribute("aria-label", "Causa y nombres formales");
   causePanel.append(node("h2", "¿Qué impulsa el movimiento?"));
   const balances = node("div"); balances.id = "lab-balances";
@@ -78,6 +79,9 @@ export function mountTransientLab(host, lab, memory, execute) {
   const duration = node("output"); duration.id = "lab-duration";
   const eventTimes = node("span", undefined, "muted"); eventTimes.id = "lab-event-times";
   timing.append(duration, eventTimes); events.append(timing);
+  const eventHelp = node("details", undefined, "lab-definition");
+  eventHelp.append(node("summary", "Antes, durante y después de eliminar la falla"), node("p", state.eventHelp));
+  events.append(eventHelp);
   const eventWindowEnd = lab.clearing_choices.at(-1).t_clear_s + lab.baseline_config.network.t_fault_s;
   const percent = t => 100 * t / eventWindowEnd;
   const faultTime = lab.baseline_config.network.t_fault_s;
@@ -160,6 +164,13 @@ export function mountTransientLab(host, lab, memory, execute) {
   });
   revealActions.append(longer, compare, inspect, revealCause);
   root.append(resultBox, revealActions);
+  const reflection = node("label", undefined, "lab-reflection"); reflection.id = "lab-reflection";
+  const reflectionPrompt = node("span");
+  const reflectionInput = node("textarea"); reflectionInput.id = "lab-reflection-input";
+  reflectionInput.rows = 3; reflectionInput.value = state.reflection ?? "";
+  reflectionInput.addEventListener("input", () => { state.reflection = reflectionInput.value; });
+  reflection.append(reflectionPrompt, reflectionInput, node("small", "Opcional. Solo permanece en esta sesión; no se envía ni se califica."));
+  root.append(reflection);
   const graph = node("figure", undefined, "lab-graph"); graph.id = "lab-graph"; graph.hidden = true;
   const graphTitle = node("figcaption", "Evidencia · separación angular en el tiempo");
   const plot = svg("svg", { viewBox:"0 0 800 260", role:"img", "aria-label":"Separación angular continua, en grados, sobre una escala común" });
@@ -316,7 +327,7 @@ export function mountTransientLab(host, lab, memory, execute) {
     root.dataset.comparing = Boolean(state.compare);
     root.dataset.sampleIndex = state.index;
     prompt.textContent = state.transferPending ? state.transferPrompt : !state.a ?
-      "La aguja muestra la separación respecto de la red, no el giro del eje. Una falla alterará la transferencia eléctrica. Predice qué pasará." :
+      state.introduction :
       state.transferDone ? "Situación nueva: contrasta tu predicción para C con la evidencia. A conserva la corrida inicial." :
       state.compare ? "Misma máquina y misma falla; solo cambió cuánto duró. Compara el primer movimiento y después busca su causa." :
       "Cambia solo la duración. La corrida anterior conserva su resultado; la nueva necesita tu predicción.";
@@ -378,6 +389,18 @@ export function mountTransientLab(host, lab, memory, execute) {
         balances.append(balance);
       }
     }
+    const observationKey = JSON.stringify(runs().map(([label, item]) => [label, item?.network_state[state.index]]));
+    if (observation.dataset.key !== observationKey) {
+      observation.dataset.key = observationKey; observation.replaceChildren();
+      for (const [label, item] of runs()) if (item) {
+        const phase = item.network_state[state.index];
+        const cue = node("p", `${label} · ${state.lessons[label].observation_cues[phase]}`);
+        cue.dataset.run = label; cue.dataset.phase = phase; observation.append(cue);
+      }
+    }
+    observation.hidden = !run;
+    reflection.hidden = !state.b || state.transferPending;
+    if (state.b) reflectionPrompt.textContent = state.lessons.B.comparison_question;
     causePanel.hidden = state.reveal < 1 || state.reveal === 6 || state.transferPending;
     formal.hidden = true;
     lessonPanel.hidden = state.reveal < 1 || state.transferPending;
@@ -394,7 +417,7 @@ export function mountTransientLab(host, lab, memory, execute) {
     if (run) paintPlot();
     // Keep the live region stable during playback; only a new run or selection
     // changes this summary, never every animation frame.
-    const resultKey = JSON.stringify([state.compare, state.usedChoices, state.transferPending]);
+    const resultKey = JSON.stringify([state.compare, state.usedChoices, state.transferPending, state.reveal >= 1]);
     if (resultBox.dataset.key !== resultKey) {
       resultBox.dataset.key = resultKey; resultBox.replaceChildren();
       for (const [label,item] of runs()) if (item) {
@@ -408,6 +431,15 @@ export function mountTransientLab(host, lab, memory, execute) {
         const detail = node("details"); detail.append(node("summary", "Evidencia de esta corrida"),
           node("p", note.evidence), node("p", note.clearing_evidence), node("p", note.why));
         card.append(detail);
+        if (state.reveal >= 1 && !state.transferPending) {
+          const causal = node("section", undefined, "lab-causal-story");
+          causal.append(node("h4", "Cómo se produjo este resultado"));
+          for (const step of note.causal_story) {
+            const paragraph = node("p", step.text); paragraph.dataset.causalStep = step.id;
+            causal.append(paragraph);
+          }
+          detail.insertBefore(causal, detail.children[1]);
+        }
         if (state.compare && label === "A") {
           const prior = node("details", undefined, "lab-prior-result");
           prior.append(node("summary", "A · Ver predicción y evidencia de la corrida inicial"), card);

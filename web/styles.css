@@ -130,3 +130,12 @@ footer p { margin-bottom:6px; }
 .prediction-layout .prediction-choices { margin:16px 0; }
 td.numeric { white-space:nowrap; font-variant-numeric:tabular-nums; text-align:right; }
 @media(max-width:1100px) { .prediction-layout { grid-template-columns:1fr; gap:12px; } }
+
+/* Keep one teaching unit visible while preserving voluntary reference reading. */
+.lesson [hidden] { display:none !important; }
+.lesson-progress { color:var(--muted); font-size:.85rem; margin-bottom:.5rem; }
+.lesson-reading-actions { display:flex; flex-wrap:wrap; gap:8px; padding-block:12px; border-bottom:1px solid var(--border); }
+.lesson-reading-actions button { max-width:100%; white-space:normal; }
+
+.lesson-reader .concept-diagram { max-width:420px; }
+.lesson-reader .concept-diagram img { max-height:240px; width:100%; object-fit:contain; }

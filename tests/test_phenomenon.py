@@ -92,6 +92,8 @@ def test_real_indeterminate_is_not_reclassified(monkeypatch):
     assert lesson["first_swing_end_index"] == len(short.trajectory.time_s) - 1
     assert "no permite" in lesson["outcome"]
     assert "confirmar ni descartar" in lesson["confrontation"]
+    assert lesson["causal_story"][-1]["status"] == "indeterminate"
+    assert "no permiten decidir" in lesson["causal_story"][-1]["text"]
 
 
 def test_formalization_defers_equations_and_preserves_damping(pair):
@@ -110,3 +112,94 @@ def test_new_bridge_operations_reject_extra_configuration():
     ]:
         with pytest.raises(ValueError, match="Unexpected"):
             dispatch(operation, payload)
+
+
+@pytest.mark.parametrize("index", range(31))
+def test_causal_story_copies_recorded_states_without_changing_verdict(index):
+    run = portable.run_transient_lab(index, "unsure")
+    lesson = phenomenon.explain_run(run)
+    story = lesson["causal_story"]
+    assert [step["id"] for step in story] == [
+        "fault_balance", "acquired_motion", "clearing_continuity", "recovery",
+    ]
+    assert story[-1]["status"] == run.evaluation.first_swing.status
+    times = run.evaluation.trajectory.time_s
+    fault = times.index(run.evaluation.configuration.network.t_fault_s)
+    clear = times.index(run.evaluation.configuration.network.t_clear_s)
+    assert [point["index"] for point in story[1]["samples"]] == [fault, clear]
+    assert run.cause[fault] in story[0]["text"]
+    for step in story:
+        for point in step["samples"]:
+            i = point["index"]
+            assert point == {
+                "index": i, "time_s": times[i],
+                "delta_rad": run.evaluation.trajectory.delta_rad[i],
+                "omega_dev_pu": run.evaluation.trajectory.omega_dev_pu[i],
+                "mechanical_power_pu": run.mechanical_power_pu[i],
+                "electrical_power_pu": run.electrical_power_pu[i],
+            }
+    assert set(lesson["observation_cues"]) == set(run.network_state)
+    assert all("dδ/dt" not in cue and "d(Δω)/dt" not in cue
+               for cue in lesson["observation_cues"].values())
+
+
+def test_teaching_projection_neither_simulates_nor_reclassifies(pair, monkeypatch):
+    def forbidden(*args, **kwargs):
+        pytest.fail("Teaching must consume the existing execution")
+    monkeypatch.setattr(portable, "evaluate_transient", forbidden)
+    monkeypatch.setattr(portable, "run_transient_lab", forbidden)
+    a, b = pair
+    assert phenomenon.explain_run(a)["causal_story"][-1]["status"] == "stable"
+    assert phenomenon.explain_run(b)["causal_story"][-1]["status"] == "unstable"
+    altered = replace(a, cause=tuple("Owner evidence" for _ in a.cause))
+    assert "Owner evidence" in phenomenon.explain_run(altered)["causal_story"][0]["text"]
+
+
+def test_clearing_explanation_does_not_assume_positive_speed(pair):
+    run = pair[0]
+    trajectory = run.evaluation.trajectory
+    clear = trajectory.time_s.index(run.evaluation.configuration.network.t_clear_s)
+    speed = list(trajectory.omega_dev_pu)
+    speed[clear] = -0.001
+    altered = replace(run, evaluation=replace(run.evaluation,
+        trajectory=replace(trajectory, omega_dev_pu=tuple(speed))))
+    story = phenomenon.explain_run(altered)["causal_story"]
+    assert "no es positiva" in story[2]["text"]
+    assert "incluido el amortiguamiento" in story[1]["text"]
+    assert story[-1]["status"] == run.evaluation.first_swing.status
+
+
+def test_canonical_causal_claims_match_independent_rhs_and_recorded_motion(pair):
+    import numpy as np
+    from sincrolab.models import SMIBParameters, smib_swing_rhs
+
+    for run in pair:
+        config = run.evaluation.configuration
+        trajectory = run.evaluation.trajectory
+        fault = trajectory.time_s.index(config.network.t_fault_s)
+        clear = trajectory.time_s.index(config.network.t_clear_s)
+        params = SMIBParameters(**{key: getattr(config.parameters, key)
+            for key in ("H_s", "D_pu", "f_base_hz", "Pm_pu")})
+        # RHS supplies acceleration including damping; narration is not the oracle.
+        for i in range(fault, clear):
+            derivative = smib_swing_rhs(trajectory.time_s[i],
+                np.array([trajectory.delta_rad[i], trajectory.omega_dev_pu[i]]),
+                params, Pmax_pu=config.network.Pmax_fault_pu)
+            assert derivative[1] > 0
+            assert run.electrical_power_pu[i] > 0  # This fault does not erase transfer.
+        assert trajectory.omega_dev_pu[clear] > trajectory.omega_dev_pu[fault]
+        # Prefault roundoff may put the fault sample just below zero; it must
+        # not hide the observed positive gain by clearing.
+        assert "más velocidad" in phenomenon.explain_run(run)["causal_story"][1]["text"]
+    a, b = pair
+    ac = phenomenon.explain_run(a)["clearing_index"]
+    bc = phenomenon.explain_run(b)["clearing_index"]
+    assert b.evaluation.trajectory.omega_dev_pu[bc] > a.evaluation.trajectory.omega_dev_pu[ac]
+    assert b.angle_deg[bc] > a.angle_deg[ac]
+    # The stable run still advances while decelerating after its clearing.
+    params = SMIBParameters(**{key: getattr(a.evaluation.configuration.parameters, key)
+        for key in ("H_s", "D_pu", "f_base_hz", "Pm_pu")})
+    rhs = smib_swing_rhs(a.evaluation.trajectory.time_s[ac],
+        np.array([a.evaluation.trajectory.delta_rad[ac], a.evaluation.trajectory.omega_dev_pu[ac]]),
+        params, Pmax_pu=a.evaluation.configuration.network.Pmax_postfault_pu)
+    assert rhs[0] > 0 and rhs[1] < 0

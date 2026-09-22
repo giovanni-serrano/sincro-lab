@@ -43,9 +43,9 @@ def explain_run(run: TransientLabRunDTO) -> dict[str, object]:
         "unsure": "No estoy seguro",
     }
     outcomes = {
-        "stable": "La separación deja de crecer y comienza a volver. "
+        "stable": "El adelanto angular deja de crecer y comienza a volver. "
         "Mantiene sincronismo en la primera oscilación evaluada.",
-        "unstable": "La separación alcanza la frontera posfalla antes de volver. "
+        "unstable": "El rotor sigue adelantándose hasta cruzar el límite angular evaluado, antes de volver. "
         "Pierde sincronismo según el criterio de primera oscilación.",
         "indeterminate": "La evidencia muestreada no permite decidir el resultado "
         "de la primera oscilación.",
@@ -94,11 +94,84 @@ def explain_run(run: TransientLabRunDTO) -> dict[str, object]:
         "El ángulo y la velocidad conservan continuidad: el rotor puede seguir "
         "avanzando respecto de la red mientras su velocidad relativa disminuye.",
         "stages": _stages(),
-        "transfer_reflection": "Compara el estado al despejar con A. "
-        "¿Qué evidencia te haría cambiar tu explicación? Describe cómo la duración "
-        "de la falla cambió el balance de potencias, la velocidad relativa y la separación.",
+        "observation_cues": {
+            "prefault": "Antes de la falla (prefalla): observa la aguja respecto de la línea de red. "
+            "¿Cambia el ángulo aunque el rotor siga girando?",
+            "fault": "Durante la falla: sigue el avance de la aguja y la pendiente de la curva. "
+            "Compara el movimiento al inicio con el que lleva al despejar.",
+            "postfault": "Después de eliminar la falla (posfalla): observa si el ángulo sigue "
+            "creciendo o empieza a volver. El despeje es el inicio de esta etapa, no el final del movimiento.",
+        },
+        "causal_story": _causal_story(run, clearing_index),
+        "comparison_question": "Solo cambió cuánto duró la falla. ¿Qué diferencia observas al "
+        "despejar y cómo crees que afecta al movimiento posterior? Escribe tu explicación provisional.",
+        "transfer_reflection": "Una falla ya terminó y el generador aún podría perder sincronismo. "
+        "¿Por qué? Usa tu corrida C y compárala con A: conecta entrada y salida de potencia, "
+        "velocidad adquirida y ángulo al despejar. ¿Qué evidencia apoya o cambia tu explicación inicial?",
         "limitation": list(run.evaluation.explanation.limitations),
     }
+
+
+def _causal_story(run: TransientLabRunDTO, clearing_index: int) -> list[dict[str, object]]:
+    """Explain recorded states and the existing verdict, without another oracle.
+
+    Instantaneous acceleration wording is reused from the model-backed portable
+    projection. Endpoint speed changes describe only the recorded interval;
+    they never assert monotonic acceleration or an exact kinetic-energy budget.
+    """
+    trajectory = run.evaluation.trajectory
+    fault_index = trajectory.time_s.index(run.evaluation.configuration.network.t_fault_s)
+
+    def sample(index: int) -> dict[str, object]:
+        return {
+            "index": index,
+            "time_s": trajectory.time_s[index],
+            "delta_rad": trajectory.delta_rad[index],
+            "omega_dev_pu": trajectory.omega_dev_pu[index],
+            "mechanical_power_pu": run.mechanical_power_pu[index],
+            "electrical_power_pu": run.electrical_power_pu[index],
+        }
+
+    start_speed = trajectory.omega_dev_pu[fault_index]
+    clear_speed = trajectory.omega_dev_pu[clearing_index]
+    movement = (
+        "Al despejar lleva más velocidad que al comenzar la falla. El desequilibrio neto "
+        "acumulado cambió el movimiento del rotor; parte de la entrada se convirtió en energía del giro."
+        if clear_speed > max(start_speed, 0) else
+        "Compara las velocidades registradas: el efecto acumulado durante la falla depende "
+        "del balance neto, incluido el amortiguamiento. No basta conocer su duración."
+    )
+    continuation = (
+        "El rotor todavía avanza más rápido que la referencia de red. Aunque empiece a frenar, "
+        "el ángulo seguirá aumentando mientras esa diferencia de velocidad sea positiva."
+        if clear_speed > 0 else
+        "La velocidad relativa al despejar no es positiva. Observa su evolución posterior; "
+        "el despeje por sí solo no decide el diagnóstico."
+    )
+    status = run.evaluation.first_swing.status
+    recovery = {
+        "stable": "En esta corrida el avance se frenó y comenzó a volver antes de cruzar el "
+        "límite del modelo. El balance neto de potencia redujo la velocidad relativa "
+        "hasta esa reversión. Oscilar no equivale a perder "
+        "sincronismo: estable no significa inmóvil. Aquí solo se diagnostica la primera oscilación.",
+        "unstable": "En esta corrida el avance no se detuvo antes de cruzar el límite angular "
+        "del modelo, incluso después de eliminar la falla. Se llegó a ese límite con velocidad "
+        "relativa positiva: ese orden de eventos sustenta la pérdida de sincronismo de primera "
+        "oscilación. Una falla más larga no produce este resultado en cualquier sistema.",
+        "indeterminate": "Las muestras no permiten decidir qué evento ocurre primero. "
+        "La explicación del balance no sustituye esa evidencia ni convierte el resultado en estable.",
+    }
+    return [
+        {"id": "fault_balance", "text": "Al comenzar la falla: " + run.cause[fault_index],
+         "samples": [sample(fault_index)]},
+        {"id": "acquired_motion", "text": movement,
+         "samples": [sample(fault_index), sample(clearing_index)]},
+        {"id": "clearing_continuity", "text": "Eliminar la falla cambia la transferencia eléctrica, "
+         "pero conserva el ángulo y la velocidad alcanzados. " + continuation,
+         "samples": [sample(clearing_index)]},
+        {"id": "recovery", "text": recovery[status], "samples": [],
+         "status": status},
+    ]
 
 
 def _stages() -> list[dict[str, str]]:
@@ -107,7 +180,7 @@ def _stages() -> list[dict[str, str]]:
         {"id": "physical", "title": "1 · Una entrada y una salida",
          "text": "El generador recibe potencia mecánica y transfiere potencia eléctrica a la red. "
          "La falla de este experimento reduce la capacidad de transferencia eléctrica. "
-         "La entrada mecánica se mantiene. Observa ambas potencias en el mismo instante.",
+         "La turbina sigue aportando potencia en este modelo. Observa ambas potencias en el mismo instante.",
          "question": "En el primer despeje, ¿qué cambió en cada corrida?"},
         {"id": "powers", "title": "2 · Nombrar lo que observaste",
          "text": "Pm es la potencia mecánica de entrada al rotor. Pe es la potencia eléctrica "
@@ -118,7 +191,9 @@ def _stages() -> list[dict[str, str]]:
          "text": "Pa = Pm − Pe. Pa positiva indica entrada mecánica mayor que transferencia "
          "eléctrica; Pa negativa indica lo contrario. Pa es potencia, no energía ni velocidad. "
          "Aquí hay amortiguamiento: para conocer el cambio de velocidad también se debe "
-         "considerar la potencia asociada al amortiguamiento.",
+         "considerar la potencia asociada al amortiguamiento. Con amortiguamiento positivo, "
+         "este efecto se opone a la desviación de velocidad. El rotor también puede devolver "
+         "energía a la red al entregar más potencia de la que recibe.",
          "question": "¿Basta mirar la diferencia de potencias para saber la posición del rotor?"},
         {"id": "speed", "title": "4 · Primero cambia la velocidad relativa",
          "text": "Δω es la desviación de velocidad eléctrica respecto de la referencia "
@@ -138,7 +213,9 @@ def _stages() -> list[dict[str, str]]:
          "Pe = Pmax del estado de red · sen(δ)\n"
          "Estas son las ecuaciones del modelo clásico SMIB que acabas de observar. "
          "El balance neto cambia la velocidad relativa; esta cambia el ángulo. "
-         "H es la constante de inercia (s); D·Δω es potencia de amortiguamiento (pu); "
+         "H es la energía del giro a velocidad nominal dividida por potencia base (s): "
+         "un H mayor hace más lento el cambio de velocidad para igual balance neto. "
+         "D·Δω es potencia de amortiguamiento (pu); "
          "ωs = 2π·f_base es la velocidad síncrona eléctrica (rad/s). "
          "Internamente δ está en radianes; la gráfica lo muestra en grados. El tiempo está "
          "en segundos. Pmax cambia exactamente al aplicar y despejar la falla equivalente. "

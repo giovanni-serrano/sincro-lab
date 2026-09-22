@@ -175,6 +175,20 @@ def main():
             blocks = page.locator("[data-block-kind]")
             assert blocks.evaluate_all("nodes => nodes.map(x => x.dataset.blockKind)") == [block["kind"] for block in topic["blocks"]]
             assert blocks.locator("p").all_text_contents() == [block["text"] for block in topic["blocks"]]
+            assert page.locator("[data-block-kind]:visible").count() == 1
+            for block_index, block in enumerate(topic["blocks"]):
+                visible_block = page.locator("[data-block-kind]:visible")
+                assert visible_block.get_attribute("data-block-kind") == block["kind"]
+                assert block["text"] in visible_block.inner_text()
+                if topic["topic_id"] in ("swing-equation", "inertia"):
+                    assert page.locator('[data-diagram="causal-chain"]').is_visible() == (block["kind"] == "equation")
+                if block_index + 1 < len(topic["blocks"]):
+                    page.locator("#lesson-continue").click()
+            assert page.locator("#lesson-continue").is_hidden()
+            page.locator("#lesson-show-all").click()
+            assert page.locator("[data-block-kind]:visible").count() == len(topic["blocks"])
+            page.locator("#lesson-show-all").click()
+            assert page.locator("[data-block-kind]:visible").count() == 1
         for index, topic in enumerate(shared["topics"]):
             for key in topic["prerequisite_topic_ids"]:
                 select_topic(page, topic["topic_id"])
@@ -197,8 +211,10 @@ def main():
         operations = page.evaluate("window.__h29Requests.map(x=>x.operation)")
         assert not {"guided_run", "guided_hints", "guided_solution"}.intersection(operations)
         evidence["steps"].append("all structured topics, prerequisites and experiment links without execution")
+        page.locator("#lesson-show-all").click()
         capture("LEARN_LIMITATIONS")
         select_topic(page, "swing-equation")
+        page.locator("#lesson-show-all").click()
         capture("LEARN_EQUATIONS")
         select_topic(page, "glossary")
         for term in shared["glossary"]:

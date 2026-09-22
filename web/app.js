@@ -179,10 +179,11 @@ function renderCatalog() {
   view.append(catalog, element("h2", "¿Prefieres tu propio escenario?"), button("Explorar en modo libre →", openFree));
   updateControls();
 }
+const lessonPositions = new Map();
 function renderLearn(topicId = session.content.topics[0].topic_id) {
   leaveLab();
   session.page = "learn";
-  view.replaceChildren(element("p", "APRENDER", "eyebrow"), element("h1", "Fundamentos y modelo"));
+  view.replaceChildren(element("p", "APRENDER", "eyebrow"), element("h1", "Del movimiento a su explicación"));
   if (labMemory.a) view.append(button("← Volver a mi experimento", openLab, { id:"theory-return-lab" }));
   if (session.case) {
     const index = session.content.cases.findIndex(item => item.case_id === session.case.case_id);
@@ -218,14 +219,40 @@ function renderLearn(topicId = session.content.topics[0].topic_id) {
     const topic = session.content.topics.find(item => item.topic_id === topicId);
     article.append(element("h2", topic.title), element("p", "OBJETIVO DE APRENDIZAJE", "eyebrow"),
       element("p", topic.learning_objective, "lesson-objective"));
+    const reader = element("div", undefined, "lesson-reader");
+    const sections = [];
     for (const [index, block] of topic.blocks.entries()) {
       const section = element("section"); section.dataset.blockKind = block.kind;
       section.append(element("h3", session.content.block_labels.find(item => item.key === block.kind).label), element("p", block.text));
-      article.append(section);
-      if (index === 0) for (const [key, metadata] of Object.entries(design.diagrams)) {
-        if (metadata.topics.includes(topicId)) article.append(diagram(key));
+      reader.append(section); sections.push(section);
+      for (const [key, metadata] of Object.entries(design.diagrams)) {
+        // The undamped symbolic chain follows the explanation of damping.
+        const diagramStep = key === "causal-chain" ? topic.blocks.findIndex(item => item.kind === "equation") : 0;
+        if (index === diagramStep && metadata.topics.includes(topicId)) section.append(diagram(key));
       }
     }
+    let position = lessonPositions.get(topicId) ?? 0, showAll = false;
+    const progress = element("p", undefined, "lesson-progress");
+    progress.id = "lesson-progress"; progress.setAttribute("aria-live", "polite");
+    const priorBlock = button("← Volver", () => moveBlock(-1), { id:"lesson-back" });
+    const nextBlock = button("Seguir la idea →", () => moveBlock(1), { primary:true, id:"lesson-continue" });
+    const wholeTopic = button("Leer el tema completo", () => { showAll = !showAll; paintReader(); }, { id:"lesson-show-all" });
+    function paintReader() {
+      sections.forEach((section, index) => { section.hidden = !showAll && index !== position; });
+      progress.textContent = showAll ? "Tema completo · lectura de consulta" : `Paso ${position + 1} de ${sections.length}`;
+      priorBlock.hidden = showAll || position === 0;
+      nextBlock.hidden = showAll || position === sections.length - 1;
+      wholeTopic.textContent = showAll ? "Volver a la lectura por pasos" : "Leer el tema completo";
+      wholeTopic.setAttribute("aria-expanded", String(showAll));
+    }
+    function moveBlock(direction) {
+      position = Math.max(0, Math.min(sections.length - 1, position + direction));
+      lessonPositions.set(topicId, position); paintReader();
+      reader.scrollIntoView({ block:"nearest" });
+    }
+    const readingActions = element("div", undefined, "lesson-reading-actions");
+    readingActions.append(priorBlock, nextBlock, wholeTopic);
+    article.append(progress, reader, readingActions); paintReader();
     const links = element("div", undefined, "lesson-links");
     if (topic.prerequisite_topic_ids.length) links.append(element("h3", "Repasar conceptos"));
     for (const key of topic.prerequisite_topic_ids) links.append(
@@ -238,7 +265,7 @@ function renderLearn(topicId = session.content.topics[0].topic_id) {
     const index = session.content.topics.indexOf(topic), next = session.content.topics[index + 1], previous = session.content.topics[index - 1];
     const paging = element("div", undefined, "lesson-next");
     if (previous) paging.append(button("← Tema anterior", () => renderLearn(previous.topic_id), { id:"theory-previous" }));
-    if (next) paging.append(button(`Continuar: ${next.title} →`, () => renderLearn(next.topic_id), { primary:true, id:"theory-next" }));
+    if (next) paging.append(button(`Continuar: ${next.title} →`, () => renderLearn(next.topic_id), { id:"theory-next" }));
     article.append(paging);
   }
   article.append(button("Ir a casos guiados", renderCatalog));
@@ -537,6 +564,10 @@ async function openLab() {
   session.page = "lab";
   labMemory.call = (operation, payload) => runtime.call(operation, payload);
   labMemory.openTheory = () => perform(() => renderLearn("swing-equation"));
+  labMemory.introduction = session.content.topics.find(topic => topic.topic_id === "rotor-angle")
+    .blocks.find(block => block.kind === "intuition").text;
+  labMemory.eventHelp = session.content.topics.find(topic => topic.topic_id === "fault-stages")
+    .blocks.find(block => block.kind === "explanation").text;
   labMemory.synchronism = session.content.topics.find(topic => topic.topic_id === "synchronous-generator")
     .blocks.find(block => block.kind === "key-idea").text;
   labView = mountTransientLab(view, session.labDefinition, labMemory, perform);

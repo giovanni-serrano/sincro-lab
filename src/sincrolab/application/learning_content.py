@@ -97,10 +97,9 @@ TOPICS = (
             ),
             LearningBlock(
                 "key-idea",
-                "Esta ruta es para estudiantes que cursan o cursaron Sistemas de Potencia. Basta recordar "
-                "circuitos, potencia, frecuencia, sistemas trifásicos y la idea de generador; aquí "
-                "construiremos los conceptos de estabilidad. No necesitas consultar una fuente externa "
-                "para comenzar el primer caso."
+                "Basta recordar circuitos, potencia, frecuencia y la idea de generador; aquí construiremos "
+                "los conceptos de estabilidad. No necesitas consultar una fuente externa para comenzar el "
+                "primer caso."
             ),
             LearningBlock(
                 "example",
@@ -116,11 +115,10 @@ TOPICS = (
             ),
             LearningBlock(
                 "experiment",
-                "Lee el recordatorio y sigue hasta primera oscilación; después abre el Caso 1 y sus "
-                "repasos. Observarás la configuración, registrarás una predicción, simularás, "
-                "interpretarás, cambiarás un parámetro y compararás antes de explicar. Son casos "
-                "sintéticos educativos, no estudios operacionales ni un simulador general de redes "
-                "reales."
+                "Puedes comenzar con el experimento de la falla y volver a esta ruta cuando quieras entender "
+                "lo observado. Cada tema parte de una pregunta física y termina con algo que puedes "
+                "comprobar. El Caso 1 permite estudiar después las curvas y sus eventos. Son casos sintéticos "
+                "educativos, no estudios operacionales de redes reales."
             ),
         ),
         case_ids=("first-swing-event-evidence",),
@@ -152,10 +150,10 @@ TOPICS = (
             ),
             LearningBlock(
                 "key-idea",
-                "Permanecer en sincronismo significa mantener una relación angular acotada con la "
-                "referencia de red, admitiendo oscilaciones transitorias. En equilibrio la velocidad "
-                "relativa es cero, pero la separación angular puede ser distinta de cero: dos agujas que "
-                "avanzan a la misma rapidez pueden conservar un desfase."
+                "La red marca el ritmo eléctrico. El rotor, la parte que gira dentro del generador, puede "
+                "adelantarse y luego retroceder respecto de ese ritmo durante una perturbación. Mantenerse "
+                "sincronizado significa que ese adelanto no crece sin límite. Puede oscilar; no necesita "
+                "quedarse inmóvil ni tener un ángulo de cero."
             ),
             LearningBlock(
                 "reflection",
@@ -276,10 +274,10 @@ TOPICS = (
         (
             LearningBlock(
                 "intuition",
-                "Piensa en dos agujas que giran: una representa la posición eléctrica del rotor y otra la "
-                "fase de la red. Si ambas avanzan igual, la separación permanece constante aunque las dos "
-                "sigan moviéndose. Es una intuición para comparar posiciones, no un modelo mecánico de la "
-                "red."
+                "La turbina hace girar el rotor. Comparamos la orientación de su campo magnético con el "
+                "avance del ciclo eléctrico de la red. La vista sigue ese ciclo: la línea de red queda fija y "
+                "la aguja muestra cuánto se adelanta el rotor respecto de ella. Una aguja quieta significa "
+                "que avanzan al mismo ritmo, aunque el eje siga girando."
             ),
             LearningBlock(
                 "explanation",
@@ -434,16 +432,19 @@ TOPICS = (
         (
             LearningBlock(
                 "intuition",
-                "Una falla puede reducir bruscamente la capacidad de entregar potencia eléctrica mientras "
-                "la entrada mecánica continúa. El rotor empieza a acumular el efecto del desequilibrio "
-                "durante el tiempo que persiste esa condición."
+                "Una falla, como un cortocircuito, altera las condiciones eléctricas de la conexión. El "
+                "generador puede entregar menos potencia aunque la turbina siga empujando. La parte que no se "
+                "entrega ni se disipa puede aumentar la energía del giro. Por eso necesitamos observar el "
+                "rotor incluso después de eliminar la falla."
             ),
             LearningBlock(
                 "explanation",
-                "Prefalla usa una amplitud Pmax; la falla usa otra y el despeje activa la amplitud "
-                "posfalla, que puede diferir de la original. En cada etapa Pe sigue la curva de esa red "
-                "al ángulo actual. Pm permanece constante. Estos Pmax equivalentes representan una "
-                "perturbación pedagógica, no un cálculo completo de cortocircuito."
+                "Antes de la falla (prefalla), durante ella (falla) y después de eliminarla (posfalla) la "
+                "conexión puede transferir distinta potencia. Eliminar la falla se llama despeje; no siempre "
+                "restaura la conexión original. Aquí representamos esos cambios con tres amplitudes Pmax de "
+                "la curva eléctrica. Pe depende también del ángulo actual: no tiene por qué caer a cero. Pm "
+                "permanece constante en este modelo. Los Pmax equivalentes no sustituyen un cálculo completo "
+                "de cortocircuito."
             ),
             LearningBlock(
                 "example",
@@ -484,9 +485,11 @@ TOPICS = (
         (
             LearningBlock(
                 "intuition",
-                "Tras el despeje el rotor puede seguir adelantándose aunque ya esté perdiendo velocidad "
-                "relativa. Para la primera excursión interesa saber si ese avance se frena y empieza a "
-                "retornar antes de llegar a la frontera angular que examina el modelo."
+                "Eliminar la falla no borra la velocidad que ganó el rotor. Puede seguir adelantándose "
+                "mientras frena. Si vuelve a la misma rapidez que la red, el ángulo deja de crecer; si "
+                "después gira un poco más lento, el ángulo disminuye. Así puede comenzar una oscilación sin "
+                "perder sincronismo. Estable no significa inmóvil. La primera oscilación es ese primer avance "
+                "y posible retorno que vamos a examinar."
             ),
             LearningBlock(
                 "explanation",
@@ -716,10 +719,10 @@ TOPICS = (
             ),
             LearningBlock(
                 "explanation",
-                "1. Lee el eje horizontal: tiempo en segundos. 2. Identifica inicio de falla y despeje en "
-                "la configuración y ubica esos tiempos en las curvas. 3. Lee δ(t), en radianes, y Δω(t), "
-                "en pu, para los mismos instantes. Una ordenada de velocidad cero significa velocidad "
-                "síncrona, no rotor parado."
+                "1. Lee el eje horizontal: tiempo en segundos. 2. Identifica inicio de falla y despeje y "
+                "ubícalos en las curvas. 3. Lee la unidad del eje: el experimento muestra δ(t) en grados; los "
+                "casos guiados, en radianes. Δω(t) está en pu. Compara los mismos instantes. Velocidad "
+                "relativa cero significa velocidad síncrona, no rotor parado."
             ),
             LearningBlock(
                 "example",
@@ -814,17 +817,21 @@ BLOCK_LABELS = (
 )
 
 QUANTITIES = (
-    DisplayQuantity("H_s", "Inercia del generador", "H", "s", "Constante de inercia del rotor."),
+    DisplayQuantity("H_s", "Inercia del generador", "H", "s", "Energía del giro a velocidad nominal dividida por potencia base. Para el mismo balance neto, "
+        "un H mayor hace más lento el cambio de velocidad."),
     DisplayQuantity("D_pu", "Coeficiente de amortiguamiento", "D", "pu/pu", "Potencia amortiguante por unidad de desviación de velocidad.", "advanced"),
     DisplayQuantity("f_base_hz", "Frecuencia base", "f", "Hz", "Frecuencia eléctrica de la referencia síncrona.", "advanced"),
-    DisplayQuantity("Pm_pu", "Potencia mecánica", "Pm", "pu", "Potencia constante que entra al rotor."),
-    DisplayQuantity("delta_rad", "Ángulo del rotor", "δ", "rad", "Ángulo eléctrico relativo a la barra infinita."),
-    DisplayQuantity("omega_dev_pu", "Desviación de velocidad", "Δω", "pu", "Desviación relativa respecto a la velocidad síncrona."),
+    DisplayQuantity("Pm_pu", "Potencia mecánica", "Pm", "pu", "Potencia que la turbina aporta al rotor; se mantiene constante en este modelo."),
+    DisplayQuantity("delta_rad", "Ángulo del rotor", "δ", "rad", "Adelanto angular del campo del rotor respecto del ciclo eléctrico de la red; no es una "
+        "distancia física."),
+    DisplayQuantity("omega_dev_pu", "Desviación de velocidad", "Δω", "pu", "Cuánto más rápido o más lento avanza el rotor respecto de la red, dividido por la velocidad "
+        "síncrona. Cero no significa eje detenido."),
     DisplayQuantity("Pmax_prefault_pu", "Transferencia máxima prefalla", "Pmax", "pu", "Amplitud de la curva potencia–ángulo antes de la falla."),
     DisplayQuantity("Pmax_fault_pu", "Transferencia máxima durante la falla", "Pmax", "pu", "Amplitud equivalente durante la falla; no modela un cortocircuito completo."),
     DisplayQuantity("Pmax_postfault_pu", "Transferencia máxima posfalla", "Pmax", "pu", "Amplitud de la curva tras el despeje."),
     DisplayQuantity("t_fault_s", "Inicio de la falla", "t falla", "s", "Instante en que comienza la red en falla."),
-    DisplayQuantity("t_clear_s", "Despeje de la falla", "t despeje", "s", "Instante desde el origen temporal; no duración de falla."),
+    DisplayQuantity("t_clear_s", "Despeje de la falla", "t despeje", "s", "Momento en que se elimina la falla, medido desde el origen temporal. Su duración es este "
+        "instante menos el inicio de la falla."),
     DisplayQuantity("t_start_s", "Inicio de simulación", "t inicio", "s", "Origen de la ventana simulada.", "advanced"),
     DisplayQuantity("t_end_s", "Fin de simulación", "t fin", "s", "Límite de la ventana disponible para observar eventos."),
     DisplayQuantity("dt_s", "Paso temporal", "Δt", "s", "Paso solicitado de integración, distinto de la tolerancia de búsqueda.", "advanced"),
@@ -866,7 +873,8 @@ GLOSSARY = (
     TermDefinition("fault", "Falla", (
         "Perturbación representada aquí por un cambio temporal de capacidad de transferencia."
     )),
-    TermDefinition("clearing", "Despeje", "Transición de la red en falla a la red posfalla en un instante especificado."),
+    TermDefinition("clearing", "Despeje", "Eliminar la falla y pasar a la conexión posterior (posfalla). Cambia la transferencia "
+                                          "eléctrica, pero conserva el ángulo y la velocidad ya alcanzados."),
     TermDefinition("first-swing", "Primera oscilación · primer swing", (
         "Primera excursión creciente posfalla examinada mediante reversión y cruce del límite"
         " relevante."

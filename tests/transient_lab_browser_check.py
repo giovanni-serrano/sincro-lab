@@ -14,7 +14,7 @@ from playwright.sync_api import sync_playwright
 
 from sincrolab.application import portable
 from test_transient_lab import assert_blind_lab_discovery
-from web_browser_check import INSTRUMENT, equivalent
+from web_browser_check import INSTRUMENT, equivalent, select_topic
 
 
 def main():
@@ -122,6 +122,19 @@ def main():
             assert evidence["runtime"]["pyodide"] == "0.27.7"
             assert page.locator(".home-actions .primary").count() == 1
             capture("01_entry", full=True)
+            page.locator("#learn-nav").click()
+            select_topic(page, "rotor-angle")
+            assert page.locator("[data-block-kind]:visible").count() == 1
+            assert page.locator("[data-block-kind]:visible").get_attribute("data-block-kind") == "intuition"
+            assert page.locator('[data-block-kind="equation"]').is_hidden()
+            capture("01_learning_intuition", full=True)
+            page.locator("#lesson-continue").click()
+            page.locator("#lesson-back").click()
+            assert page.locator("[data-block-kind]:visible").get_attribute("data-block-kind") == "intuition"
+            page.locator("#lesson-show-all").click()
+            assert page.locator('[data-block-kind="equation"]').is_visible()
+            capture("01_learning_reference", full=True)
+            page.locator("#start-nav").click()
             page.locator("#open-transient-lab").click()
             ready()
             discovery = result("transient_lab")
@@ -131,6 +144,8 @@ def main():
             assert page.locator("#lab-graph").is_hidden()
             assert page.locator("#lab-lesson").is_hidden()
             assert page.locator("#lab-prediction input:checked").count() == 0
+            assert page.locator("#lab-reflection").is_hidden()
+            assert page.locator(".lab-causal-story").count() == 0
             visible = page.locator("#transient-lab").inner_text()
             for text in ("STABLE", "UNSTABLE", "Pa =", "dδ/dt", "d(Δω)/dt", "La separación deja"):
                 assert text not in visible
@@ -151,8 +166,14 @@ def main():
             capture("05_prediction_outcome_evidence", ".lab-decisions")
             scrub(30)
             assert page.locator(".lab-system").get_attribute("data-network-state") == "fault"
+            cue = page.locator('#lab-observation-cues [data-run="A"]')
+            assert cue.get_attribute("data-phase") == "fault"
+            assert a["lesson"]["observation_cues"]["fault"] in cue.inner_text()
+            capture("05_fault_observation", ".lab-work")
             scrub(40)
             assert page.locator(".lab-system").get_attribute("data-network-state") == "postfault"
+            assert cue.get_attribute("data-phase") == "postfault"
+            capture("05_postfault_observation", ".lab-work")
             check("Blind discovery, confirmed prediction, mismatch confronted, original event states")
             page.locator("#lab-longer").click()
             handle = page.locator("#lab-clearing-handle")
@@ -181,6 +202,13 @@ def main():
             angles = page.locator("[data-angle-deg]").evaluate_all("nodes=>nodes.map(n=>Number(n.dataset.angleDeg))")
             assert abs(angles[0]-angles[1]) < 1e-12
             assert page.locator(".lab-system").evaluate_all("nodes=>nodes.map(n=>n.dataset.networkState)") == ["postfault", "fault"]
+            assert page.locator('#lab-observation-cues [data-phase="postfault"]').count() == 1
+            assert page.locator('#lab-observation-cues [data-phase="fault"]').count() == 1
+            assert page.locator(".lab-causal-story").count() == 0
+            assert page.locator("#lab-reflection").is_visible()
+            reflection = "Mi hipótesis local: comparar el movimiento adquirido al despejar."
+            page.locator("#lab-reflection-input").fill(reflection)
+            capture("05_comparison_reflection", "#lab-reflection")
             scrub(41)
             angles = page.locator("[data-angle-deg]").evaluate_all("nodes=>nodes.map(n=>Number(n.dataset.angleDeg))")
             assert angles[0] < angles[1]
@@ -199,6 +227,10 @@ def main():
             scrub(40)
             check("Common scale, every rendered point checked, full original trajectory and explicit partial cursor")
             page.locator("#lab-reveal-cause").click()
+            detail = page.locator('#lab-result [data-run="B"] details')
+            detail.locator("summary").click()
+            assert detail.locator("[data-causal-step]").evaluate_all("nodes=>nodes.map(n=>n.dataset.causalStep)") == [step["id"] for step in b["lesson"]["causal_story"]]
+            capture("08_causal_result", '#lab-result [data-run="B"]')
             for index, stage in enumerate(b["lesson"]["stages"], start=1):
                 assert page.locator("#lab-lesson").get_attribute("data-stage") == stage["id"]
                 assert stage["text"] in page.locator("#lab-lesson").inner_text()
@@ -221,6 +253,8 @@ def main():
             page.locator("#theory-return-lab").click()
             ready()
             assert page.locator("#lab-play").inner_text() == "Reproducir"
+            assert page.locator("#lab-reflection-input").input_value() == reflection
+            assert all(reflection not in str(request) for request in page.evaluate("window.__h29Requests"))
             check("Six ordered stages, damped equation last, exact sample linkage and theory return")
             previous_requests = page.evaluate("window.__h29Requests.filter(x=>x.operation==='phenomenon_run').length")
             page.locator("#lab-transfer").click()
