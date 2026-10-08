@@ -52,6 +52,23 @@ def test_production_assets_resolve_and_have_accessible_loading_shell():
             assert (WEB / name).is_file(), (path.name, name)
 
 
+def test_presentation_is_static_and_links_only_public_resources():
+    html = (WEB / "presentation.html").read_text(encoding="utf-8")
+    parser = Assets()
+    parser.feed(html)
+    assert len(parser.ids) == len(set(parser.ids))
+    assert all(name in assembly.ASSETS for name in parser.refs)
+    assert {"presentation.css", "smib.svg", "index.html"} <= set(parser.refs)
+    assert '<script' not in html and '<iframe' not in html
+    assert '<h1 ' in html and 'lang="es"' in html
+    assert 'viewport' in html and 'Saltar al contenido' in html
+    assert 'estudiantes reales sigue pendiente' in html
+    assert 'No es un cálculo completo de cortocircuito' in html
+    # Public source links are navigation, never executable remote resources.
+    assert not re.search(r'(?:src|srcset)=["\']https?://', html)
+    assert 'href="./presentation.html"' in (WEB / "index.html").read_text(encoding="utf-8")
+
+
 def test_exact_pyodide_no_floating_cdn_or_tracker():
     config = (WEB / "pyodide-config.js").read_text(encoding="utf-8")
     assert re.search(r'PYODIDE_VERSION\s*=\s*"\d+\.\d+\.\d+"', config)
@@ -59,7 +76,12 @@ def test_exact_pyodide_no_floating_cdn_or_tracker():
     assets = "\n".join(assembly.asset_path(name, ROOT).read_text(encoding="utf-8") for name in assembly.ASSETS)
     for forbidden in ("latest", "google-analytics", "sentry", "sendBeacon", "XMLHttpRequest", "WebSocket", "localStorage", "indexedDB", "randomUUID"):
         assert forbidden.lower() not in assets.lower()
-    assert set(re.findall(r'https://([^/\s"`]+)', assets)) == {"cdn.jsdelivr.net"}
+    # The static presentation may link to public code; runtime networking stays CDN-only.
+    runtime_assets = "\n".join(
+        assembly.asset_path(name, ROOT).read_text(encoding="utf-8")
+        for name in assembly.ASSETS if name != "presentation.html"
+    )
+    assert set(re.findall(r'https://([^/\s"`]+)', runtime_assets)) == {"cdn.jsdelivr.net"}
     assert 'method: "POST"' not in assets
 
 

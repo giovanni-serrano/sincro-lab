@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="description" content="SincroLab: laboratorio educativo abierto de estabilidad transitoria. Un núcleo Python, simulación SMIB y evidencia reproducible en web, escritorio y CLI.">
+  <meta name="theme-color" content="#087895">
+  <title>SincroLab · Del modelo al experimento</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./presentation.css">
+</head>
+<body>
+  <a class="skip" href="#main">Saltar al contenido</a>
+  <header class="site-header">
+    <a class="brand" href="#" aria-label="SincroLab, inicio"><span class="brand-mark" aria-hidden="true">S</span>SincroLab</a>
+    <nav aria-label="Navegación principal">
+      <a href="#proyecto">Proyecto</a><a href="#modelo">Modelo</a><a href="#evidencia">Evidencia</a>
+      <a class="nav-code" href="https://github.com/giovanni-serrano/sincro-lab">Código <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow">SISTEMAS ELÉCTRICOS DE POTENCIA</p>
+        <h1 id="hero-title">Estabilidad transitoria.<br><span>De la ecuación al experimento.</span></h1>
+        <p class="lead">Observa el rotor, anticipa su respuesta y comprueba tu explicación. Un laboratorio abierto para conectar la física con la simulación.</p>
+        <div class="actions"><a class="button primary" href="./index.html">Abrir el laboratorio <span aria-hidden="true">→</span></a><a class="button secondary" href="https://github.com/giovanni-serrano/sincro-lab#ejecutar-el-proyecto">Ejecutar localmente</a></div>
+        <p class="hero-note">Sin cuenta · Cálculo en tu navegador · Código bajo licencia MIT</p>
+      </div>
+      <figure class="model-figure">
+        <div class="figure-label"><span>EL SISTEMA QUE VAS A EXPLORAR</span><span>SMIB</span></div>
+        <img src="./smib.svg" width="480" height="240" alt="Esquema conceptual de una máquina síncrona conectada a una barra infinita mediante una red equivalente.">
+        <figcaption>Una máquina. Una referencia de red.<br><span>Modelo conceptual, sin escala; la conexión resume la red equivalente.</span></figcaption>
+      </figure>
+    </section>
+    <div class="facts" aria-label="Base del proyecto"><p><strong>Python</strong><span>Núcleo científico compartido</span></p><p><strong>SMIB clásico</strong><span>Alcance físico explícito</span></p><p><strong>Euler y RK4</strong><span>Métodos implementados en el proyecto</span></p><p><strong>Reproducible</strong><span>Casos de referencia y pruebas</span></p></div>
+    <section id="proyecto" class="section" aria-labelledby="project-title">
+      <div class="section-heading"><p class="eyebrow">APRENDIZAJE ACTIVO</p><h2 id="project-title">Comprender implica intervenir.</h2><p>La simulación empieza con una predicción y termina con una explicación sustentada en el resultado.</p></div>
+      <ol class="learning-cycle"><li>Observar</li><li>Predecir</li><li>Simular</li><li>Interpretar</li><li>Intervenir</li><li>Comparar</li><li>Explicar</li></ol>
+      <div class="feature-grid">
+        <article><span class="feature-index">01 / EXPLORAR</span><h3>El fenómeno primero</h3><p>Fundamentos del ángulo de rotor, etapas de la perturbación y una experiencia para experimentar con el tiempo de despeje.</p></article>
+        <article><span class="feature-index">02 / EXPERIMENTAR</span><h3>Predicción y contraste</h3><p>Casos guiados y modo libre. Conserva la configuración inicial, cambia parámetros y compara las trayectorias calculadas.</p></article>
+        <article><span class="feature-index">03 / EXPLICAR</span><h3>Evidencia con contexto</h3><p>Interpretación determinista, pistas progresivas y una solución pedagógica posible cuando la solicites.</p></article>
+      </div>
+    </section>
+    <section id="modelo" class="section model-section" aria-labelledby="model-title">
+      <div class="section-heading"><p class="eyebrow">FÍSICA Y SOFTWARE</p><h2 id="model-title">Un núcleo. Tres formas de usarlo.</h2><p>Las interfaces presentan los datos; el modelo, los integradores y el análisis viven en Python.</p></div>
+      <div class="interface-grid">
+        <article><h3>Web</h3><p>Python y NumPy mediante Pyodide. Sin servidor de cálculo; los intentos se conservan en memoria durante la sesión.</p><a href="./index.html">Entrar al laboratorio <span aria-hidden="true">→</span></a></article>
+        <article><h3>Escritorio</h3><p>Interfaz PySide6 para recorrer casos guiados, comparar intentos y explorar el modelo en modo libre.</p><code>uv run --extra desktop python <wbr>-m sincrolab.interfaces.desktop</code></article>
+        <article><h3>CLI y API</h3><p>Ejecuciones reproducibles y exportación estructurada de resultados. El mismo contrato de aplicación, sin dependencia de la GUI.</p><code>uv run sincrolab reference <wbr>run stable_transient</code></article>
+      </div>
+      <aside class="scope"><h3>Lo que representa el modelo</h3><p>Una máquina síncrona y una barra infinita, con etapas prefalla, falla y posfalla mediante cambios de potencia máxima equivalente. El diagnóstico se limita a la primera oscilación muestreada. No es un cálculo completo de cortocircuito ni un estudio operacional de una red real.</p></aside>
+    </section>
+    <section id="evidencia" class="section evidence-section" aria-labelledby="evidence-title">
+      <div class="section-heading"><p class="eyebrow">EVIDENCIA INSPECCIONABLE</p><h2 id="evidence-title">El rigor también se puede revisar.</h2><p>Hipótesis, unidades y tolerancias explícitas para distinguir el resultado del modelo de su interpretación.</p></div>
+      <div class="evidence-grid"><ul><li>Pruebas analíticas de los integradores y estudio de convergencia.</li><li>Comparación independiente con SciPy en el entorno de pruebas.</li><li>Casos sintéticos reproducibles y sensibilidad al paso temporal.</li><li>Eventos en su instante especificado y procedencia de cada trayectoria.</li><li>Criterio de áreas iguales en casos compatibles y búsqueda temporal con extremos evaluados.</li></ul><div class="status-note"><p class="eyebrow">ESTADO DEL PROYECTO</p><h3>Core versionado.<br>Experiencia educativa en desarrollo.</h3><p>El core científico tiene el tag v0.1.0-core. La validación pedagógica con estudiantes reales sigue pendiente; no se afirma eficacia educativa demostrada.</p><a href="https://github.com/giovanni-serrano/sincro-lab#verificaci%C3%B3n">Revisar código y verificación <span aria-hidden="true">↗</span></a></div></div>
+    </section>
+    <section class="closing" aria-labelledby="closing-title"><div><p class="eyebrow">EXPLORA EL PROYECTO</p><h2 id="closing-title">Predice. Simula. Explica.</h2><p>Empieza con un caso guiado y construye tu interpretación.</p></div><a class="button primary" href="./index.html">Abrir SincroLab <span aria-hidden="true">→</span></a></section>
+  </main>
+  <footer><p><strong>SincroLab</strong> · Laboratorio educativo abierto</p><p><a href="https://github.com/giovanni-serrano/sincro-lab">Repositorio</a><a href="https://github.com/giovanni-serrano/sincro-lab/blob/develop/v0.1-product/LICENSE">Licencia MIT</a></p><p class="footer-note">Sin telemetría. El laboratorio descarga su entorno Python desde un CDN en la primera carga. Los cálculos e intentos permanecen en el navegador.</p></footer>
+</body>
+</html>

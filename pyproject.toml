@@ -37,6 +37,7 @@ packages = ["src/sincrolab"]
 include = [
     "/pyproject.toml",
     "/README.md",
+    "/docs/TECHNICAL_GUIDE.md",
     "/LICENSE",
     "/CHANGELOG.md",
     "/CITATION.cff",
@@ -64,6 +65,8 @@ include = [
     "/tests/web_browser_check.py",
     "/tests/transient_lab_browser_check.py",
     "/web/index.html",
+    "/web/presentation.html",
+    "/web/presentation.css",
     "/web/styles.css",
     "/web/app.js",
     "/web/plots.js",
